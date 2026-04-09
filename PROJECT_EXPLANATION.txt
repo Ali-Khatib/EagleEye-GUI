@@ -1,0 +1,225 @@
+================================================================================
+   SAHI + YOLO LIVE VIDEO DETECTION — FULL EXPLANATION (ELI5 STYLE)
+================================================================================
+
+WHAT IS THIS PROJECT?
+---------------------
+This project takes a video of a street/road and draws boxes around every
+object it recognises— IN REAL TIME, live,
+as the video plays. Think of it like a security camera that highlights
+everything it sees.
+
+
+================================================================================
+THE TWO "BRAINS" (DETECTION MODES)
+================================================================================
+
+We actually have TWO ways to detect objects. You can switch between them
+live by pressing the M key.
+
+1. YOLO MODE  (default — fast)
+   ─────────────────────────────
+   - YOLO stands for "You Only Look Once."
+   - It looks at the ENTIRE frame in one shot and says
+     "I see a bus here, a car there, a person there."
+   - It's FAST — good for real-time video.
+   - Trade-off: it can miss small or far-away objects.
+
+2. SAHI MODE  (slower — more accurate for small objects)
+   ─────────────────────────────────────────────────────
+   - SAHI stands for "Slicing Aided Hyper Inference."
+   - Instead of looking at the whole frame at once, it CUTS the frame
+     into smaller tiles (like cutting a photo into a grid of squares).
+   - It runs YOLO on EACH small tile separately.
+   - Then it stitches all the results back together and removes duplicates.
+   - WHY? When you zoom into a small tile, a tiny car that YOLO would
+     miss in the full image now looks BIG in the tile → gets detected.
+   - Trade-off: slower, because it runs YOLO many times per frame.
+
+   SAHI settings in the code:
+     SLICE_HEIGHT / SLICE_WIDTH = 512   → each tile is 512×512 pixels
+     OVERLAP_H / OVERLAP_W = 0.25      → tiles overlap by 25% so objects
+                                          on the border aren't cut in half
+     POSTPROCESS = "GREEDYNMM"         → the algorithm that removes
+                                          duplicate boxes from overlapping tiles
+
+
+================================================================================
+CONFIDENCE — "HOW SURE ARE YOU?"
+================================================================================
+
+Every time the model spots something, it gives a CONFIDENCE SCORE from
+0.0 (no idea) to 1.0 (100% sure).
+
+Example: "I'm 0.85 sure this is a bus" → that's pretty confident.
+
+The CONFIDENCE THRESHOLD is our filter:
+  - If the score is ABOVE the threshold → we SHOW the box.
+  - If the score is BELOW the threshold → we IGNORE it.
+
+We have THREE presets you can switch with the 1, 2, 3 keys:
+
+  Key   Preset   Threshold   What it means
+  ───   ──────   ─────────   ──────────────────────────────────────────
+  [1]   HIGH     0.20        Only show detections the model is fairly
+                              confident about. Fewer boxes, fewer mistakes.
+
+  [2]   MID      0.10        Show more detections. Default setting.
+                              Good balance.
+
+  [3]   LOW      0.05        Show almost everything, even wild guesses.
+                              Lots of boxes. More false positives, but
+                              you won't miss real objects.
+
+WHY SO LOW? (why 0.20 and not 0.90?)
+  Our goal is to NOT MISS things (reduce false negatives). We'd rather
+  have a few wrong boxes than miss a real object. That's why even our
+  "HIGH" confidence is only 0.20 — we're being generous on purpose.
+
+INTERNAL FLOOR (MODEL_CONFIDENCE_FLOOR = 0.01):
+  We tell the model itself to report EVERYTHING above 1% confidence.
+  Then WE filter it in our code. This way when you press 1/2/3, the
+  change is instant — no need to re-run the model.
+
+
+================================================================================
+TEMPORAL FILTER — "WAS IT THERE BEFORE?"
+================================================================================
+
+Toggle: press T to turn ON/OFF.
+
+Problem: Sometimes the model hallucinates a random box for ONE frame
+         (e.g., sees a "hot dog" in the sky for a split second).
+
+Solution: The temporal filter looks at the LAST FEW FRAMES and asks:
+          "Did I see this same object in roughly the same spot recently?"
+
+How it works (step by step):
+  1. We keep a history of the last 2 frames of detections (TEMPORAL_WINDOW=3
+     means current frame + 2 previous = 3 frames total).
+  2. For each detection in the CURRENT frame, we check: does a detection
+     of the SAME CLASS exist in a NEARBY POSITION in any previous frame?
+  3. "Nearby" = within 75% of the object's own size (TEMPORAL_DIST_RATIO=0.75).
+     A big bus can move more pixels between frames than a small person.
+  4. We count HITS (how many frames it appeared in, including now).
+  5. If hits >= 2 (TEMPORAL_MIN_HITS), we KEEP it. Otherwise, we DROP it.
+
+Result: Flickering ghost detections disappear. Real objects that persist
+        across frames are kept. More stable, cleaner output.
+
+When it's OFF: every frame is independent — what the model sees is
+               what you get, no filtering.
+
+
+
+================================================================================
+KEYBOARD CONTROLS (ACTIVE WHILE VIDEO PLAYS)
+================================================================================
+
+  Key       Action
+  ───       ─────────────────────────────────────
+  1         Confidence → HIGH (0.20)
+  2         Confidence → MID  (0.10)
+  3         Confidence → LOW  (0.05)
+  T         Toggle temporal filter ON/OFF
+  M         Toggle mode: YOLO ↔ SAHI
+  Q / ESC   Quit
+
+
+================================================================================
+CODE WALKTHROUGH — SECTION BY SECTION
+================================================================================
+
+1. IMPORTS & SETUP (top of file)
+   - cv2 (OpenCV): handles video reading, drawing boxes, showing the window.
+   - ultralytics YOLO: the object detection model.
+   - sahi: the slicing library for small-object detection.
+   - deque: a sliding window list that auto-drops old frames (for temporal).
+
+2. CONFIGURATION BLOCK
+   - All the numbers explained above (confidence, slice sizes, etc.)
+   - Easy to tweak without changing any logic.
+
+3. MODEL LOADING
+   - Loads yolo11n.pt — a YOLOv11 "nano" model (smallest/fastest version).
+   - SAHI model is loaded LAZILY (only created the first time you press M
+     to switch to SAHI mode, so startup stays fast).
+
+4. VIDEO OPENING
+   - Opens the MP4 file with OpenCV.
+   - Reads width, height, FPS for proper playback speed.
+   - Optionally creates an output video writer to SAVE the annotated video.
+
+5. MAIN LOOP (while True)
+   - Read one frame.
+   - Run detection (YOLO or SAHI depending on mode).
+   - Filter by confidence threshold.
+   - Optionally filter by temporal consistency.
+   - Draw green bounding boxes + labels on the frame.
+   - Draw the HUD panel on top.
+   - Save frame to output video (if enabled).
+   - Show frame in the window.
+   - Check for key presses and react instantly.
+   - Repeat until video ends or user presses Q.
+
+6. CLEANUP
+   - Release the video file, close the output writer, destroy the window.
+
+
+================================================================================
+KEY TERMS
+================================================================================
+
+  Term                  Plain English
+  ────                  ─────────────────────────────────────────────
+  Bounding box          The green rectangle drawn around a detected object.
+
+  Confidence score      A number 0–1 saying how sure the model is.
+
+  False positive        A box on something that ISN'T really there.
+
+  False negative        A real object that got NO box (missed).
+
+  Threshold             The minimum confidence to show a box.
+
+  Inference             The act of running the model on an image.
+
+  NMS / NMM             Non-Maximum Suppression — removes duplicate
+                        overlapping boxes for the same object.
+
+  Temporal filtering    Using info from previous frames to stabilise
+                        detections across time.
+
+  Slicing (SAHI)        Cutting a big image into small tiles so the
+                        model can "zoom in" and find small objects.
+
+  HUD                   Heads-Up Display — the info panel on screen.
+
+  YOLOv11 nano          The specific pretrained model we use. "Nano"
+                        means it's the smallest variant — fast but
+                        slightly less accurate than larger versions.
+
+
+================================================================================
+Summary
+================================================================================
+
+"We built a real-time object detection system for video.
+
+ It uses a YOLOv11 model to identify objects frame-by-frame and draw
+ bounding boxes around them.
+
+ We have two detection modes:
+   - Standard YOLO for speed,
+   - SAHI sliced inference for catching small objects.
+
+ The user can switch confidence levels on the fly with keyboard shortcuts
+ to balance between missing objects and getting false alarms.
+
+ We also implemented a temporal consistency filter that looks across
+ multiple frames to remove flickering false detections.
+
+ Everything is shown in a live video window with an on-screen HUD
+ displaying the current settings, detection counts, and controls."
+
+
