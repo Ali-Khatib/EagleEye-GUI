@@ -1,8 +1,11 @@
 import cv2
+import torch
 from ultralytics import YOLO
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
 from collections import deque
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 video_path = "demo_data/test.mp4"
@@ -39,8 +42,9 @@ HUD_THICK     = 1
 
 # Load model
 model = YOLO("yolo11n.pt")
+model.to(DEVICE)
 model_path = model.ckpt_path
-print(f"Model: {model_path}")
+print(f"Model: {model_path}  |  Device: {DEVICE}")
 
 sahi_model = None
 
@@ -52,7 +56,7 @@ def get_sahi_model():
             model_type="ultralytics",
             model_path=model_path,
             confidence_threshold=MODEL_CONFIDENCE_FLOOR,
-            device="cpu",
+            device=DEVICE,
         )
     return sahi_model
 
