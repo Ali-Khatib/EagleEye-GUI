@@ -2,8 +2,6 @@
 
 Real-time object detection on video using **YOLO** and **SAHI** (Slicing Aided Hyper Inference), with a live OpenCV GUI for toggling settings on the fly.
 
-![demo](demo_data/prediction_visual.png)
-
 ## Features
 
 - **Two detection modes** (toggle with `M`):
