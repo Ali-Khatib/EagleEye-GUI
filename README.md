@@ -1,12 +1,14 @@
 # SAHI + YOLO Live Video Detection
 
 Real-time object detection on video using **YOLO** and **SAHI** (Slicing Aided Hyper Inference), with a live OpenCV GUI for toggling settings on the fly.
+Includes an image pipeline that combines **SAHI + SAM** for pixel-level masks.
 
 ## Features
 
 - **Two detection modes** (toggle with `M`):
   - **YOLO** — fast, full-frame inference
   - **SAHI** — sliced inference for better small-object detection
+- **SAM segmentation (image demo)** — SAM refines masks from detection boxes (SAM does not detect by itself)
 - **Three confidence presets** (keys `1` / `2` / `3`)
 - **Temporal filtering** (toggle with `T`) — suppresses flickering detections
 - **Live HUD overlay** showing current settings and detection stats
@@ -28,10 +30,16 @@ Place your video at `demo_data/test.mp4` (or edit the path in `videowithlivegui.
 python videowithlivegui.py
 ```
 
-### 3. Run the basic SAHI demo (images)
+### 3. Run the SAHI + SAM image demo
 
 ```bash
-python main.py
+python main.py --mode sahi
+```
+
+### 4. Run the YOLO + SAM image demo (no slicing)
+
+```bash
+python main.py --mode yolo
 ```
 
 ## Keyboard Controls (Live GUI)
@@ -52,12 +60,13 @@ python main.py
 - `ultralytics` (YOLOv8/v11)
 - `sahi`
 
-Model weights (`yolo11n.pt`) are downloaded automatically on first run.
+Model weights (`yolo11x.pt`, `sam2.x.pt`) are downloaded automatically on first run.
 
 ## Project Structure
 
 ```
-├── main.py                  # Basic SAHI image demo
+├── main.py                  # YOLO/SAHI + SAM image demo
+├── sahi_sam_runner.py        # Small SAHI+SAM runner (no window)
 ├── videowithlivegui.py      # Live video detection with GUI
 ├── requirements.txt
 ├── PROJECT_EXPLANATION.txt  # Detailed ELI5-style explanation

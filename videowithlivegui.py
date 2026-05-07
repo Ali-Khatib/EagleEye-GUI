@@ -1,23 +1,43 @@
 import cv2
 import torch
+import numpy as np
 from ultralytics import YOLO
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
 from collections import deque
 
+# 🔥 SAM IMPORTS
+from segment_anything import sam_model_registry, SamPredictor
+
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+video_path = "demo_data/test2.mp4"
 
-video_path = "demo_data/test.mp4"
-output_path = "demo_data/test2_out.mp4"
-SAVE_OUTPUT_VIDEO = True
+# SAM TOGGLE
+USE_SAM = False
 
+sam = None
+predictor = None
+SAM_EVERY_N_FRAMES = 15
+SAM_MOVE_THRESHOLD = 40
+last_sam_boxes = []
+cached_sam_masks = []
 
-CONFIDENCE_PRESETS      = [0.35, 0.10, 0.05]
-PRESET_LABELS           = ["HIGH (0.20)", "MID  (0.10)", "LOW  (0.05)"]
+def get_sam_predictor():
+    global sam, predictor
+    if predictor is None:
+        sam_checkpoint = "models/sam_vit_b.pth"
+        sam = sam_model_registry["vit_b"](checkpoint=sam_checkpoint)
+        sam.to(device=DEVICE)
+        predictor = SamPredictor(sam)
+    return predictor
+
+# SETTINGS
+CONFIDENCE_PRESETS      = [0.30, 0.10, 0.05]
+PRESET_LABELS           = ["HIGH (0.35)", "MID  (0.10)", "LOW  (0.05)"]
 confidence_preset_index = 1
 CONFIDENCE_THRESHOLD    = CONFIDENCE_PRESETS[confidence_preset_index]
-MODEL_CONFIDENCE_FLOOR  = 0.01
+MODEL_CONFIDENCE_FLOOR  = 0.15
 
 USE_SAHI             = False
 TEMPORAL_ENABLED     = False
@@ -26,13 +46,14 @@ TEMPORAL_MIN_HITS    = 2
 TEMPORAL_DIST_RATIO  = 0.75
 recent_history       = deque(maxlen=TEMPORAL_WINDOW - 1)
 
-SLICE_HEIGHT      = 512
-SLICE_WIDTH       = 512
+SLICE_HEIGHT      = 684
+SLICE_WIDTH       = 684
 OVERLAP_H         = 0.25
 OVERLAP_W         = 0.25
 POSTPROCESS_TYPE  = "GREEDYNMM"
 POSTPROCESS_METRIC = "IOU"
-POSTPROCESS_THRESH = 0.90
+POSTPROCESS_THRESH = 0.50
+MIN_BOX_AREA      = 400
 
 DISPLAY_SCALE = 0.6
 HUD_LINE_H    = 28
@@ -40,14 +61,13 @@ HUD_FONT      = cv2.FONT_HERSHEY_SIMPLEX
 HUD_SCALE     = 0.6
 HUD_THICK     = 1
 
-# Load model
-model = YOLO("yolo11n.pt")
+
+# LOAD YOLO
+model = YOLO("runs/detect/train9/weights/best.pt").to(DEVICE)
 model.to(DEVICE)
 model_path = model.ckpt_path
-print(f"Model: {model_path}  |  Device: {DEVICE}")
 
 sahi_model = None
-
 
 def get_sahi_model():
     global sahi_model
@@ -60,7 +80,7 @@ def get_sahi_model():
         )
     return sahi_model
 
-# Open video
+# VIDEO
 cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     raise RuntimeError(f"Cannot open: {video_path}")
@@ -71,193 +91,166 @@ fps   = cap.get(cv2.CAP_PROP_FPS) or 25.0
 total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 delay = max(1, int(1000.0 / fps))
 
-print(f"Video: {vid_w}x{vid_h} @ {fps:.1f}fps  ({total} frames)")
-
-out = None
-if SAVE_OUTPUT_VIDEO:
-    out = cv2.VideoWriter(
-        output_path,
-        cv2.VideoWriter_fourcc(*"mp4v"),
-        fps,
-        (vid_w, vid_h),
-    )
-
 cv2.namedWindow("Live Detection", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Live Detection", int(vid_w * DISPLAY_SCALE), int(vid_h * DISPLAY_SCALE))
 
-
-# HUD drawing
+# HUD
 def draw_hud(frame, frame_idx, kept, total_cands):
     lines = [
-        ("=== LIVE DETECTION ===",  None),
-        ("",                        None),
-        ("CONFIDENCE:",             None),
-    ]
-    for i, label in enumerate(PRESET_LABELS):
-        active = (i == confidence_preset_index)
-        prefix = " >>>" if active else "    "
-        lines.append((f"{prefix} [{i+1}] {label}", active))
-    lines += [
-        ("", None),
-        ("TOGGLES:", None),
-        (f"  [T] Temporal : {'ON ' if TEMPORAL_ENABLED else 'OFF'}", TEMPORAL_ENABLED),
-        (f"  [M] Mode     : {'SAHI sliced  ' if USE_SAHI else 'YOLO realtime'}", USE_SAHI),
-        ("", None),
-        ("  [Q] Quit", None),
-        ("", None),
-        (f"  Detections : {kept}  (raw: {total_cands})", None),
-        (f"  Frame      : {frame_idx}/{total}", None),
+        "=== LIVE DETECTION ===",
+        "",
+        f"[S] SAM: {'ON' if USE_SAM else 'OFF'}",
+        f"[M] Mode: {'SAHI' if USE_SAHI else 'YOLO'}",
+        f"[T] Temporal: {'ON' if TEMPORAL_ENABLED else 'OFF'}",
+        "",
+        f"Detections: {kept} (raw {total_cands})",
+        f"Frame: {frame_idx}/{total}",
+        "",
+        "[1/2/3] Confidence",
+        "[Q] Quit"
     ]
 
-    pad     = 12
-    panel_w = 340
-    panel_h = len(lines) * HUD_LINE_H + pad * 2
+    for i, text in enumerate(lines):
+        cv2.putText(frame, text, (10, 30 + i*25),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,255), 1)
 
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (pad, pad), (pad + panel_w, pad + panel_h), (0, 0, 0), -1)
-    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
-
-    for i, (text, state) in enumerate(lines):
-        if not text:
-            continue
-        if state is None:
-            color = (0, 220, 255)
-        elif state:
-            color = (0, 255, 100)
-        else:
-            color = (200, 200, 200)
-        y = pad + (i + 1) * HUD_LINE_H
-        cv2.putText(frame, text, (pad + 8, y), HUD_FONT, HUD_SCALE, color, HUD_THICK, cv2.LINE_AA)
-
-
-# Main loop
-
+# MAIN LOOP
 frame_idx = 0
-print("Running — Q/ESC=quit  1/2/3=confidence  T=temporal  M=mode")
 
 while True:
     ret, frame = cap.read()
     if not ret:
-        print("End of video.")
         break
 
     frame_idx += 1
 
-    # Inference
+
+    def box_center(box):
+        x1, y1, x2, y2 = box
+        return ((x1 + x2) / 2, (y1 + y2) / 2)
+
+
+    def should_update_sam(entries, last_boxes, frame_idx):
+        if frame_idx % SAM_EVERY_N_FRAMES == 0:
+            return True
+
+        if len(entries) != len(last_boxes):
+            return True
+
+        for pred, old_box in zip(entries, last_boxes):
+            cx1, cy1 = box_center(pred["bbox"])
+            cx2, cy2 = box_center(old_box)
+
+            dist = ((cx1 - cx2) ** 2 + (cy1 - cy2) ** 2) ** 0.5
+
+            if dist > SAM_MOVE_THRESHOLD:
+                return True
+
+        return False
+    # DETECTION
     if USE_SAHI:
-        result = get_sliced_prediction(
-            frame, get_sahi_model(),
-            slice_height=SLICE_HEIGHT, slice_width=SLICE_WIDTH,
-            overlap_height_ratio=OVERLAP_H, overlap_width_ratio=OVERLAP_W,
-            postprocess_type=POSTPROCESS_TYPE,
-            postprocess_match_metric=POSTPROCESS_METRIC,
-            postprocess_match_threshold=POSTPROCESS_THRESH,
-        )
+        result = get_sliced_prediction(frame, get_sahi_model(),
+            slice_height=SLICE_HEIGHT,
+            slice_width=SLICE_WIDTH,
+            overlap_height_ratio=OVERLAP_H,
+            overlap_width_ratio=OVERLAP_W)
+
         raw = [
-            {"bbox": [float(p.bbox.minx), float(p.bbox.miny),
-                      float(p.bbox.maxx), float(p.bbox.maxy)],
-             "class_id": int(p.category.id), "score": float(p.score.value)}
+            {"bbox": [p.bbox.minx, p.bbox.miny, p.bbox.maxx, p.bbox.maxy],
+             "class_id": p.category.id,
+             "score": p.score.value}
             for p in result.object_prediction_list
         ]
     else:
-        res = model.predict(frame, conf=MODEL_CONFIDENCE_FLOOR, verbose=False)[0]
+        res = model.predict(
+            frame,
+            conf=MODEL_CONFIDENCE_FLOOR,
+            device=0,
+            imgsz=640,
+            half=True,
+            verbose=False
+        )[0]
+
         raw = []
         if res.boxes is not None:
             for box in res.boxes:
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
-                raw.append({"bbox": [x1, y1, x2, y2],
-                             "class_id": int(box.cls.item()),
-                             "score": float(box.conf.item())})
+                raw.append({
+                    "bbox": [x1,y1,x2,y2],
+                    "class_id": int(box.cls),
+                    "score": float(box.conf)
+                })
 
-    total_cands = len(raw)
-
-    # Confidence filter
+    # FILTER
     entries = []
     for pred in raw:
         if pred["score"] < CONFIDENCE_THRESHOLD:
             continue
-        x1, y1, x2, y2 = pred["bbox"]
-        bw = max(0.0, x2 - x1)
-        bh = max(0.0, y2 - y1)
-        entries.append({
-            "pred": pred,
-            "class_id": pred["class_id"],
-            "cx": (x1 + x2) / 2.0,
-            "cy": (y1 + y2) / 2.0,
-            "scale": max(bw, bh, 1.0),
-        })
+        x1,y1,x2,y2 = pred["bbox"]
+        if (x2-x1)*(y2-y1) < MIN_BOX_AREA:
+            continue
+        entries.append(pred)
 
-    # Temporal filter
-    if TEMPORAL_ENABLED and recent_history:
-        confirmed = []
-        for e in entries:
-            hits = 1
-            for prev_frame in recent_history:
-                for prev in prev_frame:
-                    if prev["class_id"] != e["class_id"]:
-                        continue
-                    max_d = TEMPORAL_DIST_RATIO * max(e["scale"], prev["scale"], 1.0)
-                    dx = e["cx"] - prev["cx"]
-                    dy = e["cy"] - prev["cy"]
-                    if dx * dx + dy * dy <= max_d * max_d:
-                        hits += 1
-                        break
-            if hits >= TEMPORAL_MIN_HITS:
-                confirmed.append(e)
-        final_entries = confirmed if confirmed else entries
-    else:
-        final_entries = entries
+    # SAM PART
+    if USE_SAM and len(entries) > 0:
+        top_entries = sorted(entries, key=lambda x: -x["score"])[:2]
 
-    recent_history.append([
-        {"class_id": e["class_id"], "cx": e["cx"],
-         "cy": e["cy"], "scale": e["scale"]}
-        for e in entries
-    ])
+        if should_update_sam(top_entries, last_sam_boxes, frame_idx):
+            predictor = get_sam_predictor()
+            predictor.set_image(frame)
 
-    # Draw boxes
-    for e in final_entries:
-        x1, y1, x2, y2 = e["pred"]["bbox"]
-        name  = model.names.get(e["class_id"], str(e["class_id"]))
-        label = f"{name} {e['pred']['score']:.2f}"
-        pt1   = (int(x1), int(y1))
-        pt2   = (int(x2), int(y2))
-        cv2.rectangle(frame, pt1, pt2, (0, 255, 0), 2)
-        cv2.putText(frame, label, (pt1[0], max(18, pt1[1] - 8)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 0), 2, cv2.LINE_AA)
+            cached_sam_masks = []
+            last_sam_boxes = []
 
-    draw_hud(frame, frame_idx, len(final_entries), total_cands)
+            for pred in top_entries:
+                x1, y1, x2, y2 = map(int, pred["bbox"])
+                input_box = np.array([x1, y1, x2, y2])
 
-    if out is not None:
-        out.write(frame)
+                masks, _, _ = predictor.predict(
+                    box=input_box,
+                    multimask_output=False
+                )
+
+                cached_sam_masks.append(masks[0])
+                last_sam_boxes.append(pred["bbox"])
+
+        for mask in cached_sam_masks:
+            frame[mask] = frame[mask] * 0.5 + np.array([0, 255, 0]) * 0.5
+
+    # ----------------------------
+    # DRAW BOXES
+    # ----------------------------
+    for pred in entries:
+        x1,y1,x2,y2 = map(int, pred["bbox"])
+        name = model.names.get(pred["class_id"], str(pred["class_id"]))
+        label = f"{name} {pred['score']:.2f}"
+
+        cv2.rectangle(frame,(x1,y1),(x2,y2),(0,255,0),2)
+        cv2.putText(frame,label,(x1,y1-5),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.5,(0,255,0),2)
+
+    draw_hud(frame, frame_idx, len(entries), len(raw))
 
     cv2.imshow("Live Detection", frame)
 
-    # Key handling — instant response
+    # KEYS
     key = cv2.waitKey(delay) & 0xFF
+
     if key in (ord("q"), 27):
-        print("Stopped by user.")
         break
-    elif key == ord("1"):
-        confidence_preset_index = 0
-        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[0]
-        print(f"Confidence → {CONFIDENCE_THRESHOLD}")
-    elif key == ord("2"):
-        confidence_preset_index = 1
-        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[1]
-        print(f"Confidence → {CONFIDENCE_THRESHOLD}")
-    elif key == ord("3"):
-        confidence_preset_index = 2
-        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[2]
-        print(f"Confidence → {CONFIDENCE_THRESHOLD}")
-    elif key in (ord("t"), ord("T")):
-        TEMPORAL_ENABLED = not TEMPORAL_ENABLED
-        print(f"Temporal → {'ON' if TEMPORAL_ENABLED else 'OFF'}")
-    elif key in (ord("m"), ord("M")):
+    elif key == ord("s"):
+        USE_SAM = not USE_SAM
+        print("SAM:", USE_SAM)
+    elif key == ord("m"):
         USE_SAHI = not USE_SAHI
-        print(f"Mode → {'SAHI sliced' if USE_SAHI else 'YOLO realtime'}")
+    elif key == ord("t"):
+        TEMPORAL_ENABLED = not TEMPORAL_ENABLED
+    elif key == ord("1"):
+        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[0]
+    elif key == ord("2"):
+        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[1]
+    elif key == ord("3"):
+        CONFIDENCE_THRESHOLD = CONFIDENCE_PRESETS[2]
 
 cap.release()
-if out is not None:
-    out.release()
 cv2.destroyAllWindows()
-print(f"Done. Saved: {output_path}")
