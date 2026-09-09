@@ -188,8 +188,8 @@ def run_pipeline(
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="SAHI detections + SAM segmentation")
-    parser.add_argument("--image", default="demo_data/small-vehicles1.jpeg")
-    parser.add_argument("--yolo-model", default="runs/detect/train8/weights/best.pt")
+    parser.add_argument("--image", default="data/demo/small-vehicles1.jpeg")
+    parser.add_argument("--yolo-model", default="runs/detect/train9/weights/best.pt")
     parser.add_argument("--sam-model", default="sam2.1_l.pt")
     parser.add_argument("--conf", type=float, default=0.35)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -215,7 +215,7 @@ def main() -> None:
         args.slice_width = 384
         args.overlap_h = 0.25
         args.overlap_w = 0.25
-    output_path = args.output or "demo_data/sahi_sam_result.png"
+    output_path = args.output or "data/demo/sahi_sam_result.png"
     run_pipeline(
         image_path=args.image,
         yolo_model_path=args.yolo_model,

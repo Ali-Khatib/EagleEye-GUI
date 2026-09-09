@@ -1,8 +1,18 @@
+# KITTI dataset config for this project.
+# Class names match the trained model in runs/detect/train2/weights/best.pt
+# (verified via `YOLO(...).names`). The val split only contains instances of
+# classes 0..2 (car/van/truck), but the trained model can predict all 8.
+
 path: C:/Users/khati/PycharmProjects/SAHI/kitti
 train: images/train
 val: images/val
 
 names:
-  0: Car
-  1: Pedestrian
-  2: Cyclist
+  0: car
+  1: van
+  2: truck
+  3: pedestrian
+  4: person_sitting
+  5: cyclist
+  6: tram
+  7: misc

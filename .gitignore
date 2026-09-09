@@ -22,9 +22,30 @@ Thumbs.db
 .DS_Store
 
 # Output / large media
-demo_data/*.mp4
-demo_data/*_out.*
+data/demo/*.mp4
+data/demo/*_out.*
 runs/
+
+# Web
+webapp/frontend/node_modules/
+webapp/frontend/dist/
+webapp/frontend/*.tsbuildinfo
+
+# Local data / benchmarks (too large for git)
+_asyu_slides/
+benchmark_working/
+outputs/
+dataset/
+external/
+comparison_report/
+confusion matrices/
+kitti/images/
+kitti/labels/
+kitti/data_object_calib/
+kitti/data_object_image_2/
+kitti/data_object_image_3/
+kitti/data_object_label_2/
+kitti/sam2_pseudo_masks/
 
 # Misc
 path/

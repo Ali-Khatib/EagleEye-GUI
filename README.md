@@ -1,82 +1,121 @@
-# SAHI + YOLO Live Video Detection
+# EagleEye AI
 
-Real-time object detection on video using **YOLO** and **SAHI** (Slicing Aided Hyper Inference), with a live OpenCV GUI for toggling settings on the fly.
-Includes an image pipeline that combines **SAHI + SAM** for pixel-level masks.
+Local research workspace for comparing **five** computer-vision pipelines on **VisDrone**, **KITTI**, and a **COCO stock** baseline:
 
-## Features
+| Mode | Pipeline |
+|------|----------|
+| `yolo_only` | YOLO only |
+| `yolo_sahi` | YOLO + SAHI |
+| `sam3_only` | SAM 3 only (text prompts) |
+| `sam3_yolo` | SAM 3 + YOLO |
+| `yolo_sahi_sam3` | **YOLO + SAHI + SAM 3** (main pipeline) |
 
-- **Two detection modes** (toggle with `M`):
-  - **YOLO** — fast, full-frame inference
-  - **SAHI** — sliced inference for better small-object detection
-- **SAM segmentation (image demo)** — SAM refines masks from detection boxes (SAM does not detect by itself)
-- **Three confidence presets** (keys `1` / `2` / `3`)
-- **Temporal filtering** (toggle with `T`) — suppresses flickering detections
-- **Live HUD overlay** showing current settings and detection stats
-- Saves annotated output video
+**Full report:** [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md)  
+**Folder map:** [docs/FOLDER_LAYOUT.md](docs/FOLDER_LAYOUT.md)
 
-## Quick Start
+## Why SAM 3 replaces SAM 2.1
 
-### 1. Install dependencies
+SAM 2.1 was a strong mask refiner but required separate Meta `sam2` installs, AMG heuristics, and dataset-specific fine-tuning. **SAM 3** (Meta, via Ultralytics) adds **open-vocabulary concept segmentation** with text prompts and box prompts on a single `sam3.pt` checkpoint. This project uses SAM 3 to:
+
+- Segment by class name (`person`, `car`, `truck`, …) in `sam3_only`
+- Refine YOLO/SAHI boxes into high-quality masks without inventing extra detections (`sam3_yolo`, `yolo_sahi_sam3`)
+
+## Main pipeline: YOLO + SAHI + SAM 3
+
+1. **YOLO** — fine-tuned detector (`runs/detect/train9/weights/best.pt` for VisDrone).
+2. **SAHI** — 256×256 slices, 50% overlap, conf 0.12, GREEDYNMM merge, YOLO imgsz 640 per tile (microscopic/small-object tuned). Override via env: `SAHI_SLICE`, `SAHI_OVERLAP`, `SAHI_CONF`.
+3. **SAM 3** — box-prompt mask refinement per detection; **class IDs stay from YOLO/SAHI**.
+
+## Install
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run the live detection GUI
+### SAM 3 weights
 
-Place your video at `demo_data/test.mp4` (or edit the path in `videowithlivegui.py`), then:
-
-```bash
-python videowithlivegui.py
-```
-
-### 3. Run the SAHI + SAM image demo
+1. Accept the license on [Hugging Face — facebook/sam3](https://huggingface.co/facebook/sam3).
+2. Download `sam3.pt` and place it at the repo root, or set:
 
 ```bash
-python main.py --mode sahi
+set SAM3_WEIGHTS=C:\path\to\sam3.pt
 ```
 
-### 4. Run the YOLO + SAM image demo (no slicing)
+Ultralytics will also fetch CLIP assets on first SAM 3 run if needed.
 
-```bash
-python main.py --mode yolo
+## Compare all modes (fair evaluation)
+
+```powershell
+python compare_all.py ^
+  --source kitti/images/val ^
+  --ground-truth kitti/labels/val ^
+  --weights runs/detect/train9/weights/best.pt ^
+  --classes person pedestrian car van truck bus bicycle motorcycle ^
+  --output outputs ^
+  --limit 50
 ```
 
-## Keyboard Controls (Live GUI)
+Or:
 
-| Key | Action |
-|-----|--------|
-| `1` | High confidence threshold (0.35) |
-| `2` | Mid confidence threshold (0.10) |
-| `3` | Low confidence threshold (0.05) |
-| `T` | Toggle temporal filtering |
-| `M` | Toggle YOLO ↔ SAHI mode |
-| `Q` / `Esc` | Quit |
-
-## Requirements
-
-- Python 3.10+
-- `opencv-python`
-- `ultralytics` (YOLOv8/v11)
-- `sahi`
-
-Model weights (`yolo11x.pt`, `sam2.x.pt`) are downloaded automatically on first run.
-
-## Project Structure
-
-```
-├── main.py                  # YOLO/SAHI + SAM image demo
-├── sahi_sam_runner.py        # Small SAHI+SAM runner (no window)
-├── videowithlivegui.py      # Live video detection with GUI
-├── requirements.txt
-├── PROJECT_EXPLANATION.txt  # Detailed ELI5-style explanation
-└── demo_data/
-    ├── small-vehicles1.jpeg # Sample test image
-    ├── terrain2.png         # Sample test image
-    └── prediction_visual.png
+```powershell
+python pipelines/compare_all.py --source ... --ground-truth ... --weights ...
 ```
 
-## License
+### Outputs
 
-MIT
+```
+outputs/
+  yolo_only/          # images/, labels/, masks/, metrics.json, summary.csv, vis/
+  yolo_sahi/
+  sam3_only/
+  sam3_yolo/
+  yolo_sahi_sam3/
+  comparison_results.csv
+  recommendation.txt
+  best_mode.txt
+```
 
+Metrics are computed from predictions vs ground truth (no hardcoded scores): mAP50, precision, recall, F1, small-object recall, mask quality proxy, FPS, false positives, missed objects, duplicate count.
+
+`recommendation.txt` explains trade-offs (e.g. `yolo_only` is faster; `sam3_only` is less controlled for box mAP; `yolo_sahi_sam3` when small-object recall and mask quality lead).
+
+## Web app
+
+```powershell
+.\webapp\start.ps1
+```
+
+Open http://localhost:5173 — run any of the five pipelines on the demo image.
+
+## Run one pipeline (demo image)
+
+```powershell
+python -m experiments.exp1_yolo_only visdrone
+python -m experiments.exp5_yolo_sahi_sam3 kitti
+```
+
+## Official YOLO validation (paper)
+
+```powershell
+python experiments/run_validation.py --dataset visdrone
+```
+
+## Project layout
+
+```
+core/              # sam3_support, sahi_config, compare_metrics, detection_ops
+pipelines/         # yolo_only, yolo_sahi, sam3_*, compare_all.py
+experiments/       # exp1–exp5 demo runners
+scripts/data/      # dataset prep, YOLO training
+data/demo/         # test images for UI / CLI
+outputs/           # comparison + experiment results
+webapp/            # FastAPI + React UI
+```
+
+## Interpreting results
+
+- **yolo_only** — fastest; good baseline box AP; weak on tiny/distant objects.
+- **yolo_sahi** — better small-object recall; more duplicates possible without NMS tuning.
+- **sam3_only** — strong segmentation from text; class-agnostic box metrics unless prompts match GT classes.
+- **sam3_yolo** — controlled detection + mask quality; YOLO limits what SAM 3 can segment.
+- **yolo_sahi_sam3** — recommended for hard scenes: SAHI finds candidates, SAM 3 polishes masks.

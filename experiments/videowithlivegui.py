@@ -11,7 +11,7 @@ from segment_anything import sam_model_registry, SamPredictor
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-video_path = "demo_data/test2.mp4"
+video_path = "data/demo/test2.mp4"
 
 # SAM TOGGLE
 USE_SAM = False
@@ -63,7 +63,13 @@ HUD_THICK     = 1
 
 
 # LOAD YOLO
-model = YOLO("runs/detect/train9/weights/best.pt").to(DEVICE)
+import sys
+from pathlib import Path
+_root = Path(__file__).resolve().parents[1]
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
+from core.yolo_weights import resolve_yolo_checkpoint
+model = YOLO(resolve_yolo_checkpoint("visdrone")).to(DEVICE)
 model.to(DEVICE)
 model_path = model.ckpt_path
 
