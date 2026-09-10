@@ -43,7 +43,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
             >
               <source src="/media/hero-aerial.mp4" type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-horizon-navy/40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/75 via-horizon-navy/45 to-horizon-navy/30" />
           </>
         }
       >
@@ -120,7 +120,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
         aria-label="How the stack works"
         style={{ backgroundColor: "#001733", color: "#ffffff" }}
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/55">
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/80">
           03 The stack
         </p>
         <hr className="my-[1.5vw] border-none border-t border-white/25" />
@@ -220,7 +220,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
               alt="Road ahead, Unsplash"
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-horizon-navy/55" />
+            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/80 via-horizon-navy/55 to-horizon-navy/40" />
           </>
         }
       >
@@ -269,7 +269,7 @@ function ActionButton({
         "group inline-flex items-center justify-center gap-3 rounded-[8px] px-8 py-5 text-lg md:text-xl font-medium transition-transform duration-300 hover:-translate-y-0.5",
         primary
           ? "bg-signal-blue text-paper"
-          : "bg-paper text-horizon-navy"
+          : "border border-mist bg-paper text-horizon-navy"
       )}
     >
       {children}

@@ -81,7 +81,7 @@ export default function VideoTab({ dataset }: Props) {
 
   return (
     <div className="bg-horizon-navy text-paper min-h-[calc(100svh-72px)]">
-      <div className="mx-auto max-w-page px-5 md:px-8 py-16 md:py-24">
+      <div className="mx-auto max-w-page px-5 md:px-8 pt-28 pb-16 md:pb-24">
         <Eyebrow className="text-paper/50">
           Video · {DATASET_LABEL[dataset]}
         </Eyebrow>

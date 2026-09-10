@@ -33,7 +33,7 @@ export const FlowSection: React.FC<FlowSectionProps> = ({
     <div
       data-flow-inner
       className={cx(
-        "flow-art-container relative z-10 flex min-h-screen w-full flex-col justify-between gap-6 px-[4vw] pt-[clamp(5rem,10vw,6rem)] pb-[4vw]",
+        "flow-art-container relative z-10 flex min-h-screen w-full flex-col justify-between gap-6 bg-inherit px-[4vw] pt-[clamp(4.5rem,8vw,5.5rem)] pb-[4vw]",
         "will-change-transform"
       )}
       style={{ transformOrigin: "bottom left", ...style }}
@@ -79,7 +79,7 @@ const FlowArt: React.FC<FlowArtProps> = ({
       const triggers: ScrollTrigger[] = [];
 
       sections.forEach((section, i) => {
-        gsap.set(section, { zIndex: i + 1 });
+        gsap.set(section, { zIndex: i + 1, force3D: true });
 
         const inner = section.querySelector<HTMLElement>(".flow-art-container");
         if (!inner) return;
@@ -92,8 +92,9 @@ const FlowArt: React.FC<FlowArtProps> = ({
             scrollTrigger: {
               trigger: section,
               start: "top bottom",
-              end: "top 25%",
-              scrub: true,
+              end: "top 20%",
+              scrub: 0.5,
+              invalidateOnRefresh: true,
             },
           });
           if (tween.scrollTrigger) triggers.push(tween.scrollTrigger);
@@ -103,10 +104,12 @@ const FlowArt: React.FC<FlowArtProps> = ({
           triggers.push(
             ScrollTrigger.create({
               trigger: section,
-              start: "bottom bottom",
-              end: "bottom top",
+              start: "top top",
+              end: "+=200%",
               pin: true,
               pinSpacing: false,
+              anticipatePin: 1,
+              invalidateOnRefresh: true,
             })
           );
         }
@@ -121,13 +124,26 @@ const FlowArt: React.FC<FlowArtProps> = ({
     { scope: containerRef, dependencies: [childCount(children), reducedMotion] }
   );
 
+  const items = React.Children.toArray(children);
+
   return (
     <div
       ref={containerRef}
       aria-label={ariaLabel}
       className={cx("w-full overflow-x-hidden", className)}
     >
-      {children}
+      {items.map((child, i) => (
+        <React.Fragment key={i}>
+          {child}
+          {i < items.length - 1 && (
+            <div
+              data-flow-gap
+              aria-hidden
+              className="pointer-events-none h-[100svh] w-full bg-paper"
+            />
+          )}
+        </React.Fragment>
+      ))}
     </div>
   );
 };

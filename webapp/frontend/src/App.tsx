@@ -1,26 +1,43 @@
 import { useCallback, useEffect, useState } from "react";
+import {
+  Activity,
+  BarChart3,
+  Car,
+  Cpu,
+  Film,
+  Image,
+  LayoutGrid,
+  Plane,
+} from "lucide-react";
 import HomeTab from "./components/HomeTab";
 import PipelinesTab from "./components/PipelinesTab";
 import ResultsTab from "./components/ResultsTab";
 import VideoTab from "./components/VideoTab";
 import { EagleTransitionBar } from "./components/ui/EagleLoader";
-import DatasetSelector from "./components/ui/DatasetSelector";
-import StatusIndicator from "./components/ui/StatusIndicator";
-import Tooltip from "./components/ui/Tooltip";
+import ExpandChip from "./components/ui/ExpandChip";
 import { api } from "./api";
-import { DATASETS, type Dataset, type DatasetInfo } from "./types";
-import { cn } from "./lib/cn";
+import {
+  DATASETS,
+  DATASET_LABEL,
+  type Dataset,
+  type DatasetInfo,
+} from "./types";
 
 type Tab = "home" | "pipelines" | "video" | "results";
 
 const STORAGE_KEY = "sahi-ui-dataset";
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "home", label: "Home" },
-  { id: "pipelines", label: "Pipelines" },
-  { id: "results", label: "Results" },
-  { id: "video", label: "Video" },
+const TABS: { id: Tab; label: string; icon: typeof LayoutGrid }[] = [
+  { id: "pipelines", label: "Pipelines", icon: LayoutGrid },
+  { id: "results", label: "Results", icon: BarChart3 },
+  { id: "video", label: "Video", icon: Film },
 ];
+
+const DATASET_ICON: Record<Dataset, typeof Plane> = {
+  visdrone: Plane,
+  kitti: Car,
+  stock: Image,
+};
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("home");
@@ -39,13 +56,10 @@ export default function App() {
   const [datasetInfos, setDatasetInfos] = useState<DatasetInfo[]>([]);
   const [tabTransition, setTabTransition] = useState(false);
   const [contentKey, setContentKey] = useState(0);
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const changeTab = useCallback(
     (next: Tab) => {
       if (next === tab) return;
-      setMenuOpen(false);
       setTabTransition(true);
       window.setTimeout(() => {
         setTab(next);
@@ -108,13 +122,6 @@ export default function App() {
     }
   }, [datasetInfos, dataset]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   const gpuLabel =
     gpuInfo?.device === "cuda"
       ? (gpuInfo.name ?? "CUDA").replace("NVIDIA ", "").replace("GeForce ", "")
@@ -123,141 +130,86 @@ export default function App() {
   return (
     <div className="min-h-full flex flex-col bg-paper text-horizon-navy">
       <EagleTransitionBar active={tabTransition} />
-      <header
-        className={cn(
-          "sticky top-0 z-[80] bg-paper/95 border-b transition-[height,border-color] duration-300",
-          scrolled ? "border-mist" : "border-transparent"
-        )}
-      >
-        <div
-          className={cn(
-            "mx-auto max-w-page flex items-center gap-6 px-5 md:px-8 transition-[padding] duration-300",
-            scrolled ? "py-3" : "py-5"
-          )}
-        >
+      <header className="pointer-events-none fixed top-3 inset-x-0 z-[80] flex justify-center px-3">
+        <div className="pointer-events-auto flex max-w-full items-center gap-1 rounded-full border border-mist bg-paper/95 px-2.5 py-2 backdrop-blur-md">
           <button
             type="button"
             onClick={() => changeTab("home")}
-            className="flex items-center gap-3 text-left shrink-0"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full aurora-gradient text-[11px] font-semibold text-paper"
+            aria-label="Home"
+            title="EagleEye AI home"
           >
-            <span
-              className="h-8 w-8 rounded-[8px] aurora-gradient grid place-items-center text-paper text-[11px] font-semibold"
-              aria-hidden
-            >
-              EE
-            </span>
-            <span className="leading-tight">
-              <span className="block text-base md:text-lg font-medium tracking-tight">
-                EagleEye AI
-              </span>
-              <span className="hidden sm:block text-[11px] text-slate-whisper">
-                TÜBİTAK ARDEB 3501 · 124E099
-              </span>
-            </span>
+            EE
           </button>
-
-          <nav className="hidden md:flex items-center gap-8 ml-6">
+          <span className="mx-0.5 h-4 w-px shrink-0 bg-horizon-navy/15" aria-hidden />
+          <nav className="flex items-center" aria-label="Primary">
             {TABS.map((t) => (
-              <button
+              <ExpandChip
                 key={t.id}
+                icon={t.icon}
+                label={t.label}
+                active={tab === t.id}
                 onClick={() => changeTab(t.id)}
-                className={cn(
-                  "relative text-lg md:text-xl font-medium tracking-tight transition-colors duration-300",
-                  tab === t.id
-                    ? "text-signal-blue"
-                    : "text-horizon-navy hover:text-signal-blue"
-                )}
-              >
-                {t.label}
-                <span
-                  className={cn(
-                    "absolute -bottom-1 left-0 h-px bg-signal-blue transition-all duration-300",
-                    tab === t.id ? "w-full" : "w-0"
-                  )}
-                />
-              </button>
+              />
             ))}
           </nav>
-
-          <div className="ml-auto flex items-center gap-5">
-            <DatasetSelector
-              value={dataset}
-              onChange={changeDataset}
-              infos={datasetInfos}
-            />
-            <Tooltip
-              content={
-                gpuInfo?.device === "cuda"
-                  ? `Pipelines use GPU: ${gpuInfo.name ?? "CUDA"}`
-                  : "No CUDA GPU — pipelines run on CPU (much slower)"
-              }
-              side="bottom"
-            >
-              <StatusIndicator
-                label="GPU"
-                value={gpuLabel}
-                tone={gpuInfo?.device === "cuda" ? "good" : "warn"}
-              />
-            </Tooltip>
-            <Tooltip
-              content={
-                healthOk === true
-                  ? "Backend API is reachable for the selected dataset."
-                  : healthOk === false
-                  ? "Start the backend with webapp/start.ps1"
-                  : "Checking API connection…"
-              }
-              side="bottom"
-            >
-              <StatusIndicator
-                label="API"
-                value={
-                  healthOk === true
-                    ? "Online"
-                    : healthOk === false
-                    ? "Offline"
-                    : "…"
-                }
-                tone={
-                  healthOk === true
-                    ? "good"
-                    : healthOk === false
-                    ? "bad"
-                    : "neutral"
+          <span className="mx-0.5 h-4 w-px shrink-0 bg-horizon-navy/15" aria-hidden />
+          {DATASETS.map((d) => {
+            const info = datasetInfos.find((i) => i.id === d);
+            const ready = info ? info.yolo_ready : true;
+            return (
+              <ExpandChip
+                key={d}
+                icon={DATASET_ICON[d]}
+                label={DATASET_LABEL[d]}
+                active={dataset === d}
+                disabled={!ready}
+                onClick={() => ready && changeDataset(d)}
+                title={
+                  ready
+                    ? DATASET_LABEL[d]
+                    : `${DATASET_LABEL[d]} still training`
                 }
               />
-            </Tooltip>
-            <button
-              className="md:hidden text-lg font-medium"
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-expanded={menuOpen}
-            >
-              Menu
-            </button>
-          </div>
+            );
+          })}
         </div>
-
-        {menuOpen && (
-          <nav className="md:hidden border-t border-mist px-5 py-3 flex flex-col gap-2">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => changeTab(t.id)}
-                className={cn(
-                  "text-left py-2 text-lg font-medium",
-                  tab === t.id ? "text-signal-blue" : "text-horizon-navy"
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        )}
       </header>
+
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[80]">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-mist bg-paper/95 px-2 py-1.5 backdrop-blur-md">
+          <ExpandChip
+            icon={Cpu}
+            label={gpuLabel}
+            title={
+              gpuInfo?.device === "cuda"
+                ? `GPU ${gpuInfo.name ?? "CUDA"}`
+                : "CPU only"
+            }
+          />
+          <ExpandChip
+            icon={Activity}
+            label={
+              healthOk === true
+                ? "API online"
+                : healthOk === false
+                ? "API offline"
+                : "API"
+            }
+            title={
+              healthOk === true
+                ? "Backend API is reachable"
+                : healthOk === false
+                ? "Start the backend with webapp/start.ps1"
+                : "Checking API"
+            }
+          />
+        </div>
+      </div>
 
       <main className="flex-1">
         {healthOk === false && (
-          <div className="mx-auto max-w-page px-5 md:px-8 pt-6">
+          <div className="mx-auto max-w-page px-5 md:px-8 pt-24">
             <div className="border border-mist bg-hailstone text-horizon-navy text-body-sm px-4 py-3 rounded-[8px]">
               <div className="font-medium">Backend is offline.</div>
               <div className="text-slate-whisper text-caption mt-0.5">
@@ -279,7 +231,7 @@ export default function App() {
             />
           )}
           {tab === "pipelines" && (
-            <div className="mx-auto max-w-page px-5 md:px-8 py-16 md:py-24">
+            <div className="mx-auto max-w-page px-5 md:px-8 pt-28 pb-16 md:pb-24">
               <PipelinesTab
                 dataset={dataset}
                 onSeeResults={() => changeTab("results")}
@@ -290,7 +242,7 @@ export default function App() {
             <VideoTab dataset={dataset} />
           )}
           {tab === "results" && (
-            <div className="mx-auto max-w-page px-5 md:px-8 py-16 md:py-24">
+            <div className="mx-auto max-w-page px-5 md:px-8 pt-28 pb-16 md:pb-24">
               <ResultsTab dataset={dataset} />
             </div>
           )}
@@ -308,6 +260,12 @@ export default function App() {
           </div>
           <div className="flex gap-12 text-body-sm font-medium">
             <div className="flex flex-col gap-2">
+              <button
+                onClick={() => changeTab("home")}
+                className="text-left hover:text-signal-blue transition-colors"
+              >
+                Home
+              </button>
               {TABS.map((t) => (
                 <button
                   key={t.id}
