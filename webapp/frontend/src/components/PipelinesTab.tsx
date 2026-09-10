@@ -1,39 +1,60 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowRight,
-  BarChart3,
-  CheckCircle2,
-  ChevronDown,
-  Gauge,
-  Hash,
-  Play,
-  PlayCircle,
-  Target,
-  Trash2,
-  XCircle,
-} from "lucide-react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Play } from "lucide-react";
 import { api, fmt, fmtInt, fmtScore } from "../api";
 import {
   DATASET_LABEL,
   type Dataset,
   type DatasetInfo,
   type Experiment,
+  type ResultRow,
 } from "../types";
 import UploadCard from "./UploadCard";
 import { EagleSpinner } from "./ui/EagleLoader";
 import { PipelineCardSkeleton } from "./ui/Skeleton";
 import Tooltip from "./ui/Tooltip";
+import Button from "./ui/Button";
+import { Eyebrow } from "./ui/TextReveal";
+import { cn } from "../lib/cn";
 
 interface Props {
   dataset: Dataset;
   onSeeResults: () => void;
 }
 
-const COMPONENT_COLORS: Record<string, string> = {
-  YOLO: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  SAM3: "bg-violet-500/15 text-violet-300 border-violet-500/30",
-  SAHI: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+const COPY: Record<
+  string,
+  { strength: string; limitation: string; inference: string }
+> = {
+  "1": {
+    inference: "Full-frame, single pass",
+    strength: "Highest FPS. Clean baseline for large objects.",
+    limitation: "Distant and tiny instances are often missed.",
+  },
+  "2": {
+    inference: "Sliced tiles + GREEDYNMM merge",
+    strength: "Recovers small and crowded objects.",
+    limitation: "More compute; overlapping boxes need NMS.",
+  },
+  "3": {
+    inference: "Text-prompt concept segmentation",
+    strength: "Open vocabulary; produces masks, not only boxes.",
+    limitation: "Class-agnostic vs YOLO labels unless prompts align.",
+  },
+  "4": {
+    inference: "YOLO boxes, SAM 3 mask refine",
+    strength: "Keeps YOLO classes; cleaner instance shapes.",
+    limitation: "Cannot invent objects YOLO never proposed.",
+  },
+  "5": {
+    inference: "SAHI detect → merge → SAM 3 masks",
+    strength: "Best small-object recall with class labels preserved.",
+    limitation: "Slowest of the live-capable still-image stack.",
+  },
+  "6": {
+    inference: "Same as #5, YOLOv8n backbone",
+    strength: "Paper-comparable VisDrone baseline.",
+    limitation: "VisDrone only; needs train_v8_visdrone weights.",
+  },
 };
 
 export default function PipelinesTab({ dataset, onSeeResults }: Props) {
@@ -47,6 +68,7 @@ export default function PipelinesTab({ dataset, onSeeResults }: Props) {
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState(false);
   const [showScores, setShowScores] = useState(false);
+  const [bust, setBust] = useState(() => Date.now());
 
   const load = async () => {
     try {
@@ -63,6 +85,7 @@ export default function PipelinesTab({ dataset, onSeeResults }: Props) {
     } catch {
       setDatasetInfo(null);
     }
+    setBust(Date.now());
   };
 
   useEffect(() => {
@@ -87,9 +110,10 @@ export default function PipelinesTab({ dataset, onSeeResults }: Props) {
       if (exp.run_status === "error") {
         try {
           const detail = await api.result(dataset, id);
+          const stderr = (detail as ResultRow & { stderr?: string }).stderr;
           setErrors((p) => ({
             ...p,
-            [id]: detail.stderr || "Run failed",
+            [id]: stderr || "Run failed",
           }));
         } catch {
           setErrors((p) => ({ ...p, [id]: "Run failed" }));
@@ -185,373 +209,268 @@ export default function PipelinesTab({ dataset, onSeeResults }: Props) {
     }
   };
 
-  const anyBusy = useMemo(
-    () => Object.values(busy).some(Boolean),
-    [busy]
-  );
+  const anyBusy = useMemo(() => Object.values(busy).some(Boolean), [busy]);
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Upload */}
+    <div className="flex flex-col gap-16">
+      <header className="max-w-3xl">
+        <Eyebrow>{DATASET_LABEL[dataset]}</Eyebrow>
+        <h1 className="mt-4 text-heading-sm md:text-heading-lg font-medium tracking-[-0.038em]">
+          Six ways to see the same scene.
+        </h1>
+        <p className="mt-4 text-body text-slate-whisper max-w-xl">
+          From fast full-frame detection to multi-stage detection and
+          segmentation. Give a picture, run a pipeline, compare the evidence.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Button
+            className="group"
+            arrow
+            disabled={anyBusy || experiments.length === 0 || loading}
+            onClick={runAll}
+          >
+            {anyBusy ? "Running…" : `Run all ${experiments.length || 6}`}
+          </Button>
+          <Button variant="secondary" onClick={onSeeResults}>
+            See results
+          </Button>
+          <Button
+            variant="ghost"
+            disabled={resetting || anyBusy || loading}
+            onClick={resetResults}
+          >
+            {resetting ? "Resetting…" : "Reset results"}
+          </Button>
+          <Button variant="ghost" onClick={() => setShowScores((v) => !v)}>
+            {showScores ? "Hide scores" : "Show scores"}
+          </Button>
+        </div>
+      </header>
+
       <UploadCard dataset={dataset} onUploaded={load} />
 
-      {/* Header strip */}
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            Pipelines
-            <span className="text-[11px] font-normal px-2 py-0.5 rounded-full border border-accent-500/30 bg-accent-500/10 text-accent-300">
-              {DATASET_LABEL[dataset]}
-            </span>
-          </h2>
-          <p className="text-sm text-slate-400">
-            Give a picture, choose a pipeline, and the app runs everything
-            automatically. Results open after each successful run.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Tooltip
-            content={
-              showScores
-                ? "Hide P/R/F1 and accuracy scores"
-                : "Show P/R/F1 and accuracy scores (requires ground-truth label)"
-            }
-            side="bottom"
-          >
-            <button
-              onClick={() => setShowScores((v) => !v)}
-              className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition ${
-                showScores
-                  ? "bg-accent-500/15 border-accent-500/40 text-accent-300"
-                  : "border-ink-600/60 bg-ink-700/60 hover:bg-ink-700 text-slate-200"
-              }`}
-            >
-              <BarChart3 size={16} />
-              {showScores ? "Hide scores" : "Show scores"}
-            </button>
-          </Tooltip>
-          <Tooltip content="Delete all result images and metrics for this dataset" side="bottom">
-            <button
-              disabled={resetting || anyBusy || loading}
-              onClick={resetResults}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-ink-600/60 bg-ink-700/60 hover:bg-bad/20 hover:text-bad text-slate-200 disabled:opacity-50 transition"
-            >
-              {resetting ? <EagleSpinner size="sm" /> : <Trash2 size={16} />}
-              Reset
-            </button>
-          </Tooltip>
-          <Tooltip
-            content="Run every available pipeline sequentially on the current image."
-            side="bottom"
-          >
-            <button
-              disabled={anyBusy || experiments.length === 0 || loading}
-              onClick={runAll}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-accent-500/40 bg-accent-500/10 hover:bg-accent-500/20 text-accent-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {anyBusy ? (
-                <EagleSpinner size="sm" />
-              ) : (
-                <PlayCircle size={16} />
-              )}
-              Run all {experiments.length || 6}
-            </button>
-          </Tooltip>
-          <Tooltip content="Jump to the Results tab" side="bottom">
-            <button
-              onClick={onSeeResults}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-ink-700/60 hover:bg-ink-700 text-slate-200 transition"
-            >
-              See Results <ArrowRight size={14} />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
       {error && (
-        <div className="rounded-lg border border-bad/30 bg-bad/10 text-bad text-sm px-4 py-3">
+        <div className="rounded-[8px] border border-mist bg-hailstone text-bad text-body-sm px-4 py-3">
           {error}
         </div>
       )}
 
       {!yoloReady && (
-        <div className="rounded-lg border border-warn/40 bg-warn/10 text-warn text-sm px-4 py-3 flex items-start gap-2">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          <div>
-            <div className="font-semibold">
-              {DATASET_LABEL[dataset]} YOLO checkpoint not found.
-            </div>
-            <div className="text-warn/80 text-[12px] mt-0.5">
-              Expected at <span className="kbd">{datasetInfo?.yolo_path}</span>.
-              Training is probably still running. Pipelines that need YOLO are
-              disabled. Switch the dataset toggle to a dataset that's ready, or
-              wait for training to finish — this banner will disappear
-              automatically.
-            </div>
-          </div>
-        </div>
+        <Banner
+          title={`${DATASET_LABEL[dataset]} YOLO checkpoint not found.`}
+          body={`Expected at ${datasetInfo?.yolo_path}. Pipelines that need YOLO are disabled.`}
+        />
       )}
-
       {!sam3Ready && (
-        <div className="rounded-lg border border-warn/40 bg-warn/10 text-warn text-sm px-4 py-3 flex items-start gap-2">
-          <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-          <div>
-            <div className="font-semibold">SAM 3 weights not found.</div>
-            <div className="text-warn/80 text-[12px] mt-0.5">
-              Required file:{" "}
-              <span className="kbd break-all block mt-0.5">{datasetInfo?.sam_path}</span>
-              Request access at huggingface.co/facebook/sam3, download sam3.pt,
-              copy to that path, then restart webapp/start.ps1. Or: huggingface-cli
-              login, then python scripts/download_sam3.py
-            </div>
-          </div>
-        </div>
+        <Banner
+          title="SAM 3 weights not found."
+          body="Request sam3.pt from Hugging Face (facebook/sam3), then restart the backend."
+        />
       )}
 
-      {/* Cards grid */}
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="flex flex-col gap-24">
         {loading && experiments.length === 0
-          ? Array.from({ length: 6 }).map((_, i) => (
+          ? Array.from({ length: 3 }).map((_, i) => (
               <PipelineCardSkeleton key={`sk-${i}`} />
             ))
-          : experiments.map((e) => {
-          const isBusy = !!busy[e.id];
-          const lastErr = errors[e.id];
-          const runSecs = elapsed[e.id] ?? e.elapsed;
-          const isOpen = openId === e.id;
-          const blocked = isExperimentBlocked(e);
-          const pillStatus = isBusy
-            ? "running"
-            : e.has_result
-            ? "done"
-            : lastErr
-            ? "error"
-            : "idle";
+          : experiments.map((e, idx) => {
+              const isBusy = !!busy[e.id];
+              const lastErr = errors[e.id];
+              const runSecs = elapsed[e.id] ?? e.elapsed;
+              const isOpen = openId === e.id;
+              const blocked = isExperimentBlocked(e);
+              const copy = COPY[e.id];
+              const featured = e.id === "5";
+              const reverse = idx % 2 === 1;
+              const imgSrc = e.has_result
+                ? api.resultImageUrl(dataset, e.id, bust)
+                : api.originalImageUrl(dataset, bust);
 
-          return (
-            <div
-              key={e.id}
-              className={`rounded-2xl border border-ink-600/60 bg-ink-800/40 overflow-hidden flex flex-col transition-opacity ${
-                isBusy ? "ring-1 ring-accent-500/30 animate-pulse-soft" : ""
-              }`}
-            >
-              <div className="p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-widest text-slate-400">
-                      Pipeline {e.id}
-                    </div>
-                    <div className="font-semibold text-lg leading-tight mt-0.5">
-                      {e.name}
-                    </div>
-                  </div>
-                  <StatusPill status={pillStatus} />
-                </div>
-
-                <p className="text-sm text-slate-400">{e.subtitle}</p>
-
-                <div className="flex flex-wrap gap-1.5 mt-1">
-                  {e.components.map((c) => (
-                    <span
-                      key={c}
-                      className={`text-[11px] px-2 py-0.5 rounded-md border ${
-                        COMPONENT_COLORS[c] ??
-                        "bg-ink-700 border-ink-500 text-slate-300"
-                      }`}
-                    >
-                      {c}
-                    </span>
-                  ))}
-                  <span
-                    className={`text-[11px] px-2 py-0.5 rounded-md border ${
-                      e.metric_kind === "class_aware"
-                        ? "bg-cyan-500/10 border-cyan-500/30 text-cyan-300"
-                        : "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300"
-                    }`}
-                  >
-                    {e.metric_kind === "class_aware"
-                      ? "class-aware"
-                      : "class-agnostic"}
-                  </span>
-                </div>
-
-                <div className="text-[12px] text-slate-500 font-mono mt-1 truncate">
-                  {e.script}
-                </div>
-
-                {e.metrics && !isBusy && (
-                  <MetricChips m={e.metrics} showScores={showScores} />
-                )}
-                {isBusy && (
-                  <div className="grid grid-cols-3 gap-1.5 mt-1">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-7 rounded-md skeleton-shimmer bg-ink-600/30"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => setOpenId(isOpen ? null : e.id)}
-                className="px-5 py-2 text-xs text-slate-400 hover:text-white border-t border-ink-600/60 flex items-center justify-between"
-              >
-                <span>{isOpen ? "Hide details" : "Show description"}</span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform ${
-                    isOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {isOpen && (
-                <div className="px-5 pb-4 text-sm text-slate-300 border-t border-ink-600/40 bg-ink-900/40">
-                  {e.description}
-                </div>
-              )}
-
-              <div className="border-t border-ink-600/60 p-4 flex items-center justify-between gap-3 mt-auto bg-ink-900/30">
-                <div className="text-[11px] text-slate-400">
-                  Auto-saves image, CSV, TXT
-                </div>
-                <Tooltip
-                  content={
-                    blocked
-                      ? blockedReason(e)
-                      : `Run ${e.name} on the current image.`
-                  }
-                  side="top"
+              return (
+                <article
+                  key={e.id}
+                  className={cn(
+                    "grid lg:grid-cols-2 gap-10 lg:gap-16 items-center rounded-card p-0",
+                    featured && "lg:col-span-2 bg-horizon-navy text-paper px-6 py-12 md:px-12 md:py-16 -mx-5 md:mx-0"
+                  )}
                 >
-                  <button
-                    onClick={() => runOne(e.id)}
-                    disabled={isBusy || blocked}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-accent-500 text-ink-900 font-semibold text-sm hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    {isBusy ? (
-                      <>
-                        <EagleSpinner size="sm" />
-                        Running…
-                        {runSecs != null && runSecs > 0
-                          ? ` ${Math.round(runSecs)}s`
-                          : ""}
-                      </>
-                    ) : blocked ? (
-                      <>
-                        <AlertTriangle size={14} />
-                        {needsYolov8(e) && e.weights_ready === false
-                          ? dataset !== "visdrone"
-                            ? "VisDrone only"
-                            : "Needs YOLOv8"
-                          : !yoloReady && needsYolo(e)
-                          ? "Needs YOLO"
-                          : "Needs SAM 3"}
-                      </>
-                    ) : (
-                      <>
-                        <Play size={14} />
-                        Run
-                      </>
-                    )}
-                  </button>
-                </Tooltip>
-              </div>
+                  <div className={cn(reverse && "lg:order-2")}>
+                    <div
+                      className={cn(
+                        "overflow-hidden rounded-card bg-hailstone group border",
+                        featured ? "border-white/10" : "border-mist hover:border-signal-blue",
+                        "transition-colors duration-400"
+                      )}
+                    >
+                      <img
+                        src={imgSrc}
+                        alt={e.name}
+                        className="w-full aspect-[4/3] object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        onError={(ev) => {
+                          ev.currentTarget.src = api.originalImageUrl(dataset, bust);
+                        }}
+                      />
+                    </div>
+                  </div>
 
-              {lastErr && (
-                <div className="px-5 py-2 border-t border-bad/30 bg-bad/5 text-bad text-xs">
-                  <XCircle size={12} className="inline -mt-0.5 mr-1" />
-                  {lastErr.slice(0, 220)}
-                  {lastErr.length > 220 ? "…" : ""}
-                </div>
-              )}
-              {e.has_result && runSecs != null && runSecs > 0 && !isBusy && !lastErr && (
-                <div className="px-5 py-2 border-t border-good/30 bg-good/5 text-good text-xs flex items-center gap-2">
-                  <CheckCircle2 size={12} />
-                  Done in {runSecs.toFixed(1)} s
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  <div className={cn(reverse && "lg:order-1")}>
+                    <Eyebrow className={featured ? "text-paper/50" : undefined}>
+                      Pipeline {e.id.padStart(2, "0")}
+                      {featured ? " · Featured" : ""}
+                    </Eyebrow>
+                    <h2
+                      className={cn(
+                        "mt-3 text-heading-sm font-medium tracking-[-0.038em]",
+                        featured ? "text-paper" : "text-horizon-navy"
+                      )}
+                    >
+                      {e.name}
+                    </h2>
+                    <p
+                      className={cn(
+                        "mt-3 text-body",
+                        featured ? "text-paper/70" : "text-slate-whisper"
+                      )}
+                    >
+                      {e.subtitle}
+                    </p>
+
+                    <dl className="mt-8 grid grid-cols-1 gap-4 text-body-sm">
+                      <Row label="Approach" value={e.components.join(" → ")} invert={featured} />
+                      <Row label="Inference" value={copy?.inference ?? e.script} invert={featured} />
+                      <Row label="Strength" value={copy?.strength ?? "—"} invert={featured} />
+                      <Row label="Limitation" value={copy?.limitation ?? "—"} invert={featured} />
+                      {e.metrics && (
+                        <>
+                          <Row
+                            label="Runtime"
+                            value={`${fmt(e.metrics.runtime_seconds, 2)} s · ${fmt(e.metrics.fps, 2)} FPS`}
+                            invert={featured}
+                          />
+                          {showScores && (
+                            <Row
+                              label="P / R / F1"
+                              value={`${fmtScore(e.metrics, e.metrics.precision, 3)} · ${fmtScore(e.metrics, e.metrics.recall, 3)} · ${fmtScore(e.metrics, e.metrics.f1_score, 3)}`}
+                              invert={featured}
+                            />
+                          )}
+                          <Row
+                            label="Count"
+                            value={fmtInt(e.metrics.count)}
+                            invert={featured}
+                          />
+                        </>
+                      )}
+                    </dl>
+
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                      <Tooltip
+                        content={blocked ? blockedReason(e) : `Run ${e.name} on the current image.`}
+                      >
+                        <Button
+                          className={cn("group", featured && "bg-signal-blue")}
+                          arrow={!isBusy && !blocked}
+                          disabled={isBusy || blocked}
+                          onClick={() => runOne(e.id)}
+                        >
+                          {isBusy ? (
+                            <span className="inline-flex items-center gap-2">
+                              <EagleSpinner size="sm" />
+                              Running
+                              {runSecs != null && runSecs > 0
+                                ? ` ${Math.round(runSecs)}s`
+                                : ""}
+                            </span>
+                          ) : blocked ? (
+                            needsYolov8(e) && e.weights_ready === false
+                              ? dataset !== "visdrone"
+                                ? "VisDrone only"
+                                : "Needs YOLOv8"
+                              : !yoloReady && needsYolo(e)
+                              ? "Needs YOLO"
+                              : "Needs SAM 3"
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              <Play size={14} />
+                              Run
+                            </span>
+                          )}
+                        </Button>
+                      </Tooltip>
+                      <button
+                        onClick={() => setOpenId(isOpen ? null : e.id)}
+                        className={cn(
+                          "text-body-sm font-medium transition-transform duration-300 hover:translate-x-0.5",
+                          featured ? "text-paper" : "text-horizon-navy"
+                        )}
+                      >
+                        {isOpen ? "Hide architecture" : "Architecture & parameters"}
+                      </button>
+                    </div>
+
+                    {isOpen && (
+                      <p
+                        className={cn(
+                          "mt-6 text-body-sm leading-relaxed",
+                          featured ? "text-paper/70" : "text-graphite-dim"
+                        )}
+                      >
+                        {e.description} Script: {e.script}. Metric kind:{" "}
+                        {e.metric_kind.replace("_", "-")}.
+                      </p>
+                    )}
+                    {lastErr && (
+                      <p className="mt-4 text-caption text-bad">
+                        {lastErr.slice(0, 280)}
+                        {lastErr.length > 280 ? "…" : ""}
+                      </p>
+                    )}
+                    {e.has_result && runSecs != null && runSecs > 0 && !isBusy && !lastErr && (
+                      <p
+                        className={cn(
+                          "mt-4 text-caption",
+                          featured ? "text-paper/60" : "text-slate-whisper"
+                        )}
+                      >
+                        Done in {runSecs.toFixed(1)} s
+                      </p>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
       </div>
     </div>
   );
 }
 
-function MetricChips({
-  m,
-  showScores,
-}: {
-  m: NonNullable<Experiment["metrics"]>;
-  showScores: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-1.5 mt-1">
-      {showScores && (
-        <>
-          <Chip icon={<Target size={11} />} label="P" value={fmtScore(m, m.precision, 3)} tone="emerald" />
-          <Chip icon={<Target size={11} />} label="R" value={fmtScore(m, m.recall, 3)} tone="emerald" />
-          <Chip icon={<Target size={11} />} label="F1" value={fmtScore(m, m.f1_score, 3)} tone="emerald" />
-          <Chip icon={<Target size={11} />} label="Acc" value={fmtScore(m, m.accuracy, 3)} tone="emerald" />
-        </>
-      )}
-      <Chip icon={<Hash size={11} />} label="Count" value={fmtInt(m.count)} tone="cyan" />
-      <Chip icon={<Gauge size={11} />} label="Time" value={fmt(m.runtime_seconds, 2)} tone="amber" />
-      <Chip icon={<Gauge size={11} />} label="FPS" value={fmt(m.fps, 2)} tone="slate" />
-    </div>
-  );
-}
-
-function Chip({
-  icon,
+function Row({
   label,
   value,
-  tone,
+  invert,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string;
-  tone: "cyan" | "amber" | "slate" | "emerald";
+  invert?: boolean;
 }) {
-  const cls: Record<string, string> = {
-    cyan: "bg-cyan-500/10 border-cyan-500/30 text-cyan-200",
-    amber: "bg-amber-500/10 border-amber-500/30 text-amber-200",
-    slate: "bg-ink-700/40 border-ink-500 text-slate-300",
-    emerald: "bg-emerald-500/10 border-emerald-500/30 text-emerald-200",
-  };
   return (
-    <div
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] ${cls[tone]}`}
-    >
-      <span className="opacity-80">{icon}</span>
-      <span className="uppercase tracking-wider opacity-70">{label}</span>
-      <span className="ml-auto font-mono font-semibold">{value}</span>
+    <div className="grid grid-cols-[140px_1fr] gap-4 border-t border-current/10 pt-4">
+      <dt className={cn("text-caption uppercase tracking-[0.1em]", invert ? "text-paper/40" : "text-slate-whisper")}>
+        {label}
+      </dt>
+      <dd className={invert ? "text-paper" : "text-horizon-navy"}>{value}</dd>
     </div>
   );
 }
 
-function StatusPill({
-  status,
-}: {
-  status: "idle" | "running" | "done" | "error";
-}) {
-  const map = {
-    idle: { text: "no result", cls: "bg-ink-700 text-slate-300 border-ink-500" },
-    running: {
-      text: "running",
-      cls: "bg-accent-500/10 text-accent-300 border-accent-500/30",
-    },
-    done: { text: "ready", cls: "bg-good/10 text-good border-good/30" },
-    error: { text: "error", cls: "bg-bad/10 text-bad border-bad/30" },
-  } as const;
-  const m = map[status];
+function Banner({ title, body }: { title: string; body: string }) {
   return (
-    <span
-      className={`text-[11px] px-2 py-0.5 rounded-full border ${m.cls}`}
-    >
-      {m.text}
-    </span>
+    <div className="rounded-[8px] border border-mist bg-hailstone px-4 py-3 flex items-start gap-2 text-body-sm">
+      <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warn" />
+      <div>
+        <div className="font-medium">{title}</div>
+        <div className="text-slate-whisper text-caption mt-0.5">{body}</div>
+      </div>
+    </div>
   );
 }

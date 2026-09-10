@@ -35,26 +35,26 @@ export function ImageLightbox({ image, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col bg-ink-950/95 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex flex-col bg-horizon-navy"
       role="dialog"
       aria-modal="true"
       aria-label={image.title}
       onClick={onClose}
     >
       <div
-        className="flex items-center justify-between gap-3 px-4 py-3 border-b border-ink-600/60 shrink-0"
+        className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="text-sm font-medium text-slate-200 truncate">
+        <div className="text-body-sm font-medium text-paper truncate">
           {image.title}
         </div>
-        <p className="text-[11px] text-slate-500 hidden sm:block">
+        <p className="text-caption text-paper/50 hidden sm:block">
           Esc or click outside to close
         </p>
         <button
           type="button"
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-ink-700 text-slate-300"
+          className="p-2 rounded-[8px] text-paper"
           aria-label="Close"
         >
           <X size={20} />
@@ -68,7 +68,7 @@ export function ImageLightbox({ image, onClose }: Props) {
         <img
           src={image.src}
           alt={image.alt ?? image.title}
-          className="max-w-[min(100%,96vw)] max-h-[min(100%,88vh)] w-auto h-auto object-contain select-none shadow-2xl"
+          className="max-w-[min(100%,96vw)] max-h-[min(100%,88vh)] w-auto h-auto object-contain select-none"
           draggable={false}
         />
       </div>
@@ -81,9 +81,9 @@ export const lightboxImageClass =
 
 export function LightboxHint() {
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-slate-500">
+    <span className="inline-flex items-center gap-1 text-caption text-slate-whisper">
       <ZoomIn size={10} />
-      double-click to maximize
+      double-click or fullscreen
     </span>
   );
 }

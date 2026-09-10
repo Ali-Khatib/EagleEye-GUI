@@ -15,7 +15,6 @@ interface Props {
   children: ReactNode;
   side?: Side;
   className?: string;
-  /** Show only when condition is true (e.g. disabled buttons) */
   when?: boolean;
 }
 
@@ -45,9 +44,9 @@ export default function Tooltip({
         id={id}
         role="tooltip"
         className={cn(
-          "pointer-events-none absolute z-50 w-max max-w-[240px] rounded-md border border-ink-500/80 bg-ink-800 px-2.5 py-1.5 text-[11px] leading-snug text-slate-200 shadow-lg transition-all duration-150",
+          "pointer-events-none absolute z-50 w-max max-w-[240px] rounded-[8px] border border-mist bg-paper px-2.5 py-1.5 text-caption leading-snug text-horizon-navy transition-opacity duration-150",
           sideClass[side],
-          show ? "opacity-100 translate-y-0 scale-100" : "opacity-0 scale-95 pointer-events-none"
+          show ? "opacity-100" : "opacity-0"
         )}
       >
         {content}

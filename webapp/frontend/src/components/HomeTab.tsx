@@ -1,159 +1,298 @@
-import {
-  ArrowRight,
-  Camera,
-  Layers,
-  Scan,
-  Sparkles,
-  Target,
-  Timer,
-} from "lucide-react";
+import { ArrowRight, Layers, Scan, Target } from "lucide-react";
+import type { ReactNode } from "react";
+import type { Dataset } from "../types";
+import FlowArt, { FlowSection } from "./ui/story-scroll";
+import { cn } from "../lib/cn";
 
 interface Props {
+  dataset: Dataset;
   onStart: () => void;
+  onResults: () => void;
+  onVideo: () => void;
 }
 
-const PIPELINES = [
-  { name: "YOLO", desc: "Fast object detection", icon: <Target size={16} /> },
-  { name: "SAHI + YOLO", desc: "Small objects", icon: <Layers size={16} /> },
-  { name: "SAM 3", desc: "Text-prompt masks", icon: <Scan size={16} /> },
-  { name: "SAM 3 + YOLO", desc: "Detect + refine", icon: <Sparkles size={16} /> },
-  { name: "YOLO + SAHI + SAM 3", desc: "Main pipeline", icon: <Sparkles size={16} /> },
-  { name: "YOLOv8 + SAHI + SAM 3", desc: "Paper compare", icon: <Target size={16} /> },
-];
+/** Unsplash License, free to use. */
+const IMG = {
+  aerialCity:
+    "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1800&q=80",
+  highway:
+    "https://images.unsplash.com/photo-1465447142348-e9952c393450?auto=format&fit=crop&w=1800&q=80",
+  drone:
+    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?auto=format&fit=crop&w=1800&q=80",
+  urbanNight:
+    "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1800&q=80",
+  road:
+    "https://images.unsplash.com/photo-1502481851512-e9e2529bfbf9?auto=format&fit=crop&w=1800&q=80",
+};
 
-export default function HomeTab({ onStart }: Props) {
+export default function HomeTab({ onStart, onResults, onVideo }: Props) {
   return (
-    <div className="flex flex-col gap-12">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl border border-ink-600/60 bg-ink-800/40 p-10 md:p-14 glow-border">
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-accent-500/10 blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-accent-600/10 blur-3xl" />
-
-        <div className="relative">
-          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-accent-400 bg-accent-500/10 border border-accent-500/30 px-3 py-1 rounded-full">
-            <Camera size={12} />
-            EagleEye AI
-          </div>
-
-          <h1 className="mt-5 text-4xl md:text-5xl font-extrabold tracking-tight">
-            6 computer vision pipelines.
+    <FlowArt aria-label="EagleEye story">
+      <FlowSection
+        aria-label="EagleEye introduction"
+        className="text-paper"
+        background={
+          <>
+            <video
+              className="absolute inset-0 h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={IMG.aerialCity}
+            >
+              <source src="/media/hero-aerial.mp4" type="video/mp4" />
+            </video>
+            <div className="absolute inset-0 bg-horizon-navy/40" />
+          </>
+        }
+      >
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/80">
+          01 EagleEye AI · Computer vision
+        </p>
+        <hr className="my-[1.5vw] border-none border-t border-paper/40" />
+        <div className="flex flex-col gap-8 max-w-5xl">
+          <h1 className="text-[clamp(3.25rem,9vw,7.5rem)] font-medium leading-[0.92] tracking-[-0.04em]">
+            Seeing the small.
             <br />
-            <span className="bg-gradient-to-r from-accent-400 to-cyan-300 bg-clip-text text-transparent">
-              YOLO, SAHI, and SAM 3
-            </span>
+            Understanding the scene.
           </h1>
-
-          <p className="mt-4 text-slate-300 max-w-2xl leading-relaxed">
-            Side-by-side benchmarking of <b>YOLO</b>, <b>SAHI</b>, and{" "}
-            <b>SAM 3</b> on small-object detection &amp;
-            segmentation tasks (VisDrone / KITTI). Run any pipeline against the
-            same image and compare F1, precision, recall, accuracy, FPS, model
-            size and parameter count.
+          <p className="max-w-[42ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug text-paper/90">
+            Multi stage detection and segmentation with YOLO, SAHI, and SAM 3.
           </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <button
-              onClick={onStart}
-              className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-500 hover:bg-accent-400 text-ink-900 font-semibold transition shadow-glow"
-            >
-              Choose a pipeline
-              <ArrowRight
-                size={16}
-                className="group-hover:translate-x-0.5 transition-transform"
-              />
-            </button>
-            <span className="text-xs text-slate-400 hidden md:inline">
-              or upload your own image on the{" "}
-              <span className="kbd">Pipelines</span> tab.
-            </span>
-          </div>
-
-          {/* Stats */}
-          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "Pipelines", value: "6" },
-              { label: "Datasets", value: "VisDrone · KITTI" },
-              { label: "Eval IoU", value: "0.50" },
-              { label: "SAHI slice", value: "256 · 50%" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="rounded-xl border border-ink-600/60 bg-ink-700/40 p-4"
-              >
-                <div className="text-[11px] uppercase tracking-widest text-slate-400">
-                  {s.label}
-                </div>
-                <div className="mt-1 text-xl font-semibold">{s.value}</div>
-              </div>
-            ))}
+          <div className="flex flex-wrap gap-4">
+            <ActionButton onClick={onStart} primary>
+              Explore the pipelines
+              <ArrowRight size={22} aria-hidden />
+            </ActionButton>
+            <ActionButton onClick={onResults}>View results</ActionButton>
+            <ActionButton onClick={onVideo}>Watch live video</ActionButton>
           </div>
         </div>
-      </section>
-
-      {/* Pipelines preview grid */}
-      <section>
-        <div className="flex items-end justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold">Pipelines you can compare</h2>
-            <p className="text-sm text-slate-400">
-              Run them one by one and watch the leaderboard fill up.
-            </p>
-          </div>
-          <button
-            onClick={onStart}
-            className="text-sm text-accent-400 hover:text-accent-300 inline-flex items-center gap-1"
-          >
-            Open Pipelines <ArrowRight size={14} />
-          </button>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {PIPELINES.map((p) => (
-            <div
-              key={p.name}
-              className="rounded-xl border border-ink-600/60 bg-ink-800/40 p-5 hover:border-accent-500/40 hover:bg-ink-700/40 transition"
-            >
-              <div className="flex items-center gap-2 text-accent-400">
-                {p.icon}
-                <span className="font-semibold text-white">{p.name}</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-6 border-t border-paper/30">
+          {[
+            ["6", "Vision pipelines"],
+            ["3", "Datasets"],
+            ["YOLO · SAHI · SAM 3", "Stack"],
+            ["IoU 0.50", "Evaluation"],
+          ].map(([k, v]) => (
+            <div key={v}>
+              <div className="text-base md:text-lg font-medium uppercase tracking-[0.1em] text-paper/60">
+                {v}
               </div>
-              <p className="mt-2 text-sm text-slate-400">{p.desc}</p>
+              <div className="mt-1 text-xl md:text-2xl">{k}</div>
             </div>
           ))}
         </div>
-      </section>
+      </FlowSection>
 
-      {/* What you get */}
-      <section className="grid md:grid-cols-3 gap-4">
-        {[
-          {
-            icon: <Target className="text-accent-400" />,
-            title: "Per-object metrics",
-            text: "Precision, recall, F1, accuracy with IoU = 0.5 matching against ground-truth YOLO labels.",
-          },
-          {
-            icon: <Timer className="text-accent-400" />,
-            title: "Runtime + model size",
-            text: "Wall-clock seconds, FPS, YOLO parameter count, YOLO weight size and SAM checkpoint size on disk.",
-          },
-          {
-            icon: <Sparkles className="text-accent-400" />,
-            title: "Visual diff",
-            text: "Side-by-side before / after image for every pipeline so you can eyeball detection quality fast.",
-          },
-        ].map((c) => (
-          <div
-            key={c.title}
-            className="rounded-xl border border-ink-600/60 bg-ink-800/40 p-5"
-          >
-            <div className="w-9 h-9 rounded-lg bg-accent-500/10 grid place-items-center">
-              {c.icon}
-            </div>
-            <div className="mt-3 font-semibold">{c.title}</div>
-            <div className="text-sm text-slate-400 mt-1">{c.text}</div>
+      <FlowSection
+        aria-label="The research problem"
+        style={{ backgroundColor: "#ffffff", color: "#001733" }}
+      >
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-slate-whisper">
+          02 The problem
+        </p>
+        <hr className="my-[1.5vw] border-none border-t border-mist" />
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end">
+          <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+            Small objects
+            <br />
+            break
+            <br />
+            detectors.
+          </h2>
+          <img
+            src={IMG.drone}
+            alt="Aerial landscape, Unsplash"
+            className="w-full aspect-[4/3] object-cover rounded-[8px]"
+          />
+        </div>
+        <hr className="my-[1.5vw] border-none border-t border-mist" />
+        <p className="max-w-[48ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug">
+          Conventional full frame detectors lose the pixels that matter: distant
+          cars, pedestrians, and crowded scenes. EagleEye restacks detection so
+          those objects get another look.
+        </p>
+      </FlowSection>
+
+      <FlowSection
+        aria-label="How the stack works"
+        style={{ backgroundColor: "#001733", color: "#ffffff" }}
+      >
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/55">
+          03 The stack
+        </p>
+        <hr className="my-[1.5vw] border-none border-t border-white/25" />
+        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+          One image.
+          <br />
+          Six ways
+          <br />
+          to see it.
+        </h2>
+        <hr className="my-[1.5vw] border-none border-t border-white/25" />
+        <div className="grid md:grid-cols-3 gap-10">
+          <StackNote
+            icon={<Target size={36} />}
+            title="YOLO"
+            body="Fast full frame detection. The baseline everything else is measured against."
+          />
+          <StackNote
+            icon={<Layers size={36} />}
+            title="SAHI"
+            body="Tiles the frame, infers at higher effective resolution, then merges boxes."
+          />
+          <StackNote
+            icon={<Scan size={36} />}
+            title="SAM 3"
+            body="Open vocabulary prompts and mask refinement inside each detection."
+          />
+        </div>
+        <img
+          src={IMG.highway}
+          alt="Highway interchange, Unsplash"
+          className="mt-4 w-full max-h-[32vh] object-cover rounded-[8px]"
+        />
+      </FlowSection>
+
+      <FlowSection
+        aria-label="How to use EagleEye"
+        style={{ backgroundColor: "#f3f4f8", color: "#001733" }}
+      >
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-slate-whisper">
+          04 How to run it
+        </p>
+        <hr className="my-[1.5vw] border-none border-t border-mist" />
+        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+          Pick a
+          <br />
+          scene.
+          <br />
+          Run a
+          <br />
+          pipeline.
+        </h2>
+        <hr className="my-[1.5vw] border-none border-t border-mist" />
+        <div className="grid md:grid-cols-3 gap-10">
+          <div>
+            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              01 Choose a dataset
+            </p>
+            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+              VisDrone, KITTI, or Stock (COCO). The selector in the bar switches
+              weights, labels, and examples without reloading the page.
+            </p>
           </div>
-        ))}
-      </section>
+          <div>
+            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              02 Open Pipelines
+            </p>
+            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+              Six architectures, same image. Run one, or run all. Pipeline 5 is
+              the hybrid: YOLO + SAHI + SAM 3.
+            </p>
+          </div>
+          <div>
+            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              03 Read Results
+            </p>
+            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+              Precision, recall, F1, FPS. Drag the comparison slider. Then try
+              live YOLO or YOLO + SAHI on the Video tab.
+            </p>
+          </div>
+        </div>
+        <img
+          src={IMG.urbanNight}
+          alt="Urban traffic at dusk, Unsplash"
+          className="w-full max-h-[28vh] object-cover rounded-[8px]"
+        />
+      </FlowSection>
+
+      <FlowSection
+        aria-label="Enter the workbench"
+        className="text-paper"
+        background={
+          <>
+            <img
+              src={IMG.road}
+              alt="Road ahead, Unsplash"
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-horizon-navy/55" />
+          </>
+        }
+      >
+        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/70">
+          05 Start
+        </p>
+        <hr className="my-[1.5vw] border-none border-t border-paper/35" />
+        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+          Measure
+          <br />
+          the
+          <br />
+          difference.
+        </h2>
+        <p className="max-w-[44ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug text-paper/90">
+          Accuracy is only half of the problem. SAHI recovers small objects and
+          costs runtime. The workbench is where those tradeoffs become visible.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <ActionButton onClick={onStart} primary>
+            Open pipelines
+            <ArrowRight size={22} aria-hidden />
+          </ActionButton>
+          <ActionButton onClick={onResults}>Open results</ActionButton>
+          <ActionButton onClick={onVideo}>Open video</ActionButton>
+        </div>
+      </FlowSection>
+    </FlowArt>
+  );
+}
+
+function ActionButton({
+  children,
+  onClick,
+  primary,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group inline-flex items-center justify-center gap-3 rounded-[8px] px-8 py-5 text-lg md:text-xl font-medium transition-transform duration-300 hover:-translate-y-0.5",
+        primary
+          ? "bg-signal-blue text-paper"
+          : "bg-paper text-horizon-navy"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StackNote({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div>
+      <div className="text-paper mb-3">{icon}</div>
+      <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide">
+        {title}
+      </p>
+      <p className="text-xl md:text-2xl leading-snug text-paper/80">{body}</p>
     </div>
   );
 }

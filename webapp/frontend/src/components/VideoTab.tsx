@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Film, Play, Square, Upload } from "lucide-react";
+import { Play, Square, Upload } from "lucide-react";
 import { api } from "../api";
 import { DATASET_LABEL, type Dataset } from "../types";
 import Tooltip from "./ui/Tooltip";
+import Button from "./ui/Button";
+import { Eyebrow } from "./ui/TextReveal";
+import { cn } from "../lib/cn";
 
 type LiveMode = "yolo_only" | "yolo_sahi";
 
@@ -13,7 +16,7 @@ interface Props {
 const MODES: { id: LiveMode; label: string; hint: string }[] = [
   {
     id: "yolo_only",
-    label: "YOLO only",
+    label: "YOLO",
     hint: "Fast live path (~paper 70+ FPS on KITTI / VisDrone YOLO-only).",
   },
   {
@@ -74,66 +77,67 @@ export default function VideoTab({ dataset }: Props) {
   };
 
   const streamSrc =
-    playing && ready
-      ? api.videoStreamUrl(dataset, mode, bust)
-      : "";
+    playing && ready ? api.videoStreamUrl(dataset, mode, bust) : "";
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold flex items-center gap-2">
-          <Film size={22} className="text-accent-400" />
-          Video
-          <span className="text-xs font-normal text-slate-400 border border-ink-600 rounded-full px-2 py-0.5">
-            {DATASET_LABEL[dataset]}
-          </span>
+    <div className="bg-horizon-navy text-paper min-h-[calc(100svh-72px)]">
+      <div className="mx-auto max-w-page px-5 md:px-8 py-16 md:py-24">
+        <Eyebrow className="text-paper/50">
+          Video · {DATASET_LABEL[dataset]}
+        </Eyebrow>
+        <h1 className="mt-4 text-heading-sm md:text-heading-lg font-medium tracking-[-0.038em] max-w-3xl">
+          See EagleEye in motion.
         </h1>
-        <p className="mt-2 text-sm text-slate-400 max-w-3xl">
-          Live stream with the same library toggles as the OpenCV demo.{" "}
-          <b className="text-slate-200">YOLO</b> or <b className="text-slate-200">YOLO + SAHI</b>{" "}
-          run on each frame. Pipeline 5 (SAM 3 text fill + masks) is not live —
-          it is ~0.02 FPS; run it on a still in Pipelines.
+        <p className="mt-4 max-w-2xl text-body text-paper/70">
+          Live annotated frames with YOLO or YOLO + SAHI. SAM 3 is available for
+          still-image evaluation — it is not in the live path (~0.02 FPS).
         </p>
-      </div>
 
-      <div className="flex flex-wrap gap-2">
-        {MODES.map((m) => (
-          <Tooltip key={m.id} content={m.hint} side="bottom">
-            <button
-              onClick={() => {
-                setMode(m.id);
-                if (playing) setBust(Date.now());
-              }}
-              className={`px-4 py-2 rounded-lg text-sm border transition ${
-                mode === m.id
-                  ? "bg-accent-500/15 text-accent-400 border-accent-500/40"
-                  : "text-slate-300 border-ink-600 hover:border-ink-500"
-              }`}
-            >
-              {m.label}
-            </button>
-          </Tooltip>
-        ))}
-      </div>
+        <div className="mt-12 overflow-hidden rounded-card bg-coal">
+          <div className="aspect-video grid place-items-center min-h-[360px]">
+            {playing && streamSrc ? (
+              <img
+                src={streamSrc}
+                alt="Live detections"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <p className="text-body-sm text-paper/50 p-8 text-center">
+                {ready
+                  ? "Press Play to stream annotated frames."
+                  : "Upload an mp4 to start."}
+              </p>
+            )}
+          </div>
 
-      <div className="grid md:grid-cols-[1fr_280px] gap-6">
-        <div className="rounded-xl border border-ink-600/60 bg-ink-800/40 overflow-hidden min-h-[360px] grid place-items-center">
-          {playing && streamSrc ? (
-            <img
-              src={streamSrc}
-              alt="Live detections"
-              className="w-full h-full object-contain bg-black"
-            />
-          ) : (
-            <div className="text-center text-slate-500 text-sm p-8">
-              {ready
-                ? "Press Play to stream annotated frames."
-                : "Upload an mp4 to start."}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-4 md:gap-8 px-4 md:px-6 py-4 border-t border-white/10 text-caption">
+            <Hud label="Pipeline" value={mode === "yolo_only" ? "YOLO" : "YOLO + SAHI"} />
+            <Hud label="Dataset" value={DATASET_LABEL[dataset]} />
+            <Hud label="Stream" value={playing ? "Live" : "Idle"} />
+            <Hud label="SAM 3" value="Still images only" />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="mt-8 flex flex-wrap items-center gap-3">
+          {MODES.map((m) => (
+            <Tooltip key={m.id} content={m.hint} side="bottom">
+              <button
+                onClick={() => {
+                  setMode(m.id);
+                  if (playing) setBust(Date.now());
+                }}
+                className={cn(
+                  "px-4 py-3 rounded-[8px] text-body-sm font-medium border transition-colors duration-300",
+                  mode === m.id
+                    ? "border-signal-blue text-paper bg-signal-blue"
+                    : "border-white/20 text-paper/80 hover:border-white/40"
+                )}
+              >
+                {m.label}
+              </button>
+            </Tooltip>
+          ))}
+
           <input
             ref={inputRef}
             type="file"
@@ -141,43 +145,42 @@ export default function VideoTab({ dataset }: Props) {
             className="hidden"
             onChange={(e) => upload(e.target.files?.[0] ?? null)}
           />
-          <button
+          <Button
+            variant="secondary"
             disabled={busy}
             onClick={() => inputRef.current?.click()}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-ink-700 border border-ink-600 text-sm hover:bg-ink-600"
           >
-            <Upload size={16} />
+            <Upload size={14} />
             {busy ? "Uploading…" : "Upload video"}
-          </button>
-          <div className="flex gap-2">
-            {!playing ? (
-              <button
-                onClick={start}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-accent-500 text-ink-900 font-semibold"
-              >
-                <Play size={16} />
-                Play
-              </button>
-            ) : (
-              <button
-                onClick={() => setPlaying(false)}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-ink-600 text-sm"
-              >
-                <Square size={16} />
-                Stop
-              </button>
-            )}
-          </div>
-          <p className="text-xs text-slate-500">
-            Switching YOLO / SAHI restarts the stream with that library.
-          </p>
-          {error && (
-            <div className="text-sm text-bad border border-bad/40 bg-bad/10 rounded-lg px-3 py-2">
-              {error}
-            </div>
+          </Button>
+          {!playing ? (
+            <Button className="group" arrow onClick={start}>
+              <Play size={14} />
+              Play
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={() => setPlaying(false)}>
+              <Square size={14} />
+              Stop
+            </Button>
           )}
         </div>
+
+        {error && (
+          <p className="mt-4 text-body-sm text-paper/80 border border-white/15 rounded-[8px] px-4 py-3">
+            {error}
+          </p>
+        )}
       </div>
+    </div>
+  );
+}
+
+function Hud({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="uppercase tracking-[0.1em] text-paper/40">{label}</div>
+      <div className="mt-0.5 text-paper">{value}</div>
     </div>
   );
 }
