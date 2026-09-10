@@ -14,15 +14,15 @@ interface Props {
 /** Unsplash License, free to use. */
 const IMG = {
   aerialCity:
-    "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=1800&q=80",
+    "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=2400&q=85",
   highway:
-    "https://images.unsplash.com/photo-1465447142348-e9952c393450?auto=format&fit=crop&w=1800&q=80",
+    "https://images.unsplash.com/photo-1465447142348-e9952c393450?auto=format&fit=crop&w=2400&q=85",
   drone:
-    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?auto=format&fit=crop&w=1800&q=80",
+    "https://images.unsplash.com/photo-1473968512647-3e447244af8f?auto=format&fit=crop&w=2400&q=85",
   urbanNight:
-    "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1800&q=80",
+    "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=2400&q=85",
   road:
-    "https://images.unsplash.com/photo-1502481851512-e9e2529bfbf9?auto=format&fit=crop&w=1800&q=80",
+    "https://images.unsplash.com/photo-1502481851512-e9e2529bfbf9?auto=format&fit=crop&w=2400&q=85",
 };
 
 export default function HomeTab({ onStart, onResults, onVideo }: Props) {
@@ -43,7 +43,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
             >
               <source src="/media/hero-aerial.mp4" type="video/mp4" />
             </video>
-            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/75 via-horizon-navy/45 to-horizon-navy/30" />
+            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/55 via-horizon-navy/25 to-transparent" />
           </>
         }
       >
@@ -94,8 +94,8 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
           02 The problem
         </p>
         <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end">
-          <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+        <div className="grid lg:grid-cols-2 gap-10 items-stretch min-h-0 flex-1">
+          <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em] self-end">
             Small objects
             <br />
             break
@@ -105,7 +105,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
           <img
             src={IMG.drone}
             alt="Aerial landscape, Unsplash"
-            className="w-full aspect-[4/3] object-cover rounded-[8px]"
+            className="w-full h-full min-h-[42vh] object-cover rounded-[8px]"
           />
         </div>
         <hr className="my-[1.5vw] border-none border-t border-mist" />
@@ -152,7 +152,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
         <img
           src={IMG.highway}
           alt="Highway interchange, Unsplash"
-          className="mt-4 w-full max-h-[32vh] object-cover rounded-[8px]"
+          className="mt-2 w-full flex-1 min-h-[38vh] object-cover rounded-[8px]"
         />
       </FlowSection>
 
@@ -174,40 +174,42 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
           pipeline.
         </h2>
         <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <div className="grid md:grid-cols-3 gap-10">
-          <div>
-            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
-              01 Choose a dataset
-            </p>
-            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
-              VisDrone, KITTI, or Stock (COCO). The selector in the bar switches
-              weights, labels, and examples without reloading the page.
-            </p>
+        <div className="grid lg:grid-cols-2 gap-10 items-start flex-1 min-h-0">
+          <div className="grid gap-8">
+            <div>
+              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+                01 Choose a dataset
+              </p>
+              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+                VisDrone, KITTI, or Stock (COCO). Hover the plane, car, or image
+                icons in the top bar, then click one.
+              </p>
+            </div>
+            <div>
+              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+                02 Open Pipelines
+              </p>
+              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+                Six architectures, same image. Run one, or run all. Pipeline 5 is
+                the hybrid: YOLO + SAHI + SAM 3.
+              </p>
+            </div>
+            <div>
+              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+                03 Read Results
+              </p>
+              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+                Precision, recall, F1, FPS. Drag the comparison slider. Then try
+                live YOLO or YOLO + SAHI on the Video tab.
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
-              02 Open Pipelines
-            </p>
-            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
-              Six architectures, same image. Run one, or run all. Pipeline 5 is
-              the hybrid: YOLO + SAHI + SAM 3.
-            </p>
-          </div>
-          <div>
-            <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
-              03 Read Results
-            </p>
-            <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
-              Precision, recall, F1, FPS. Drag the comparison slider. Then try
-              live YOLO or YOLO + SAHI on the Video tab.
-            </p>
-          </div>
+          <img
+            src={IMG.urbanNight}
+            alt="Urban traffic at dusk, Unsplash"
+            className="w-full h-full min-h-[48vh] object-cover rounded-[8px]"
+          />
         </div>
-        <img
-          src={IMG.urbanNight}
-          alt="Urban traffic at dusk, Unsplash"
-          className="w-full max-h-[28vh] object-cover rounded-[8px]"
-        />
       </FlowSection>
 
       <FlowSection
@@ -220,7 +222,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
               alt="Road ahead, Unsplash"
               className="absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/80 via-horizon-navy/55 to-horizon-navy/40" />
+            <div className="absolute inset-0 bg-gradient-to-r from-horizon-navy/60 via-horizon-navy/25 to-transparent" />
           </>
         }
       >

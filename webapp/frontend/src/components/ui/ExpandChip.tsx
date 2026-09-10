@@ -8,6 +8,8 @@ interface Props {
   onClick?: () => void;
   disabled?: boolean;
   title?: string;
+  /** Also expand label when this Tailwind group is hovered, e.g. "ds" for group/ds */
+  expandGroup?: string;
 }
 
 export default function ExpandChip({
@@ -17,7 +19,9 @@ export default function ExpandChip({
   onClick,
   disabled,
   title,
+  expandGroup,
 }: Props) {
+
   return (
     <button
       type="button"
@@ -35,15 +39,20 @@ export default function ExpandChip({
     >
       <Icon
         size={22}
-        className="shrink-0 transition-transform duration-300 group-hover/chip:scale-125 group-focus-visible/chip:scale-125"
+        className={cn(
+          "shrink-0 transition-transform duration-300 group-hover/chip:scale-125 group-focus-visible/chip:scale-125",
+          expandGroup === "ds" && "group-hover/ds:scale-110"
+        )}
         aria-hidden
       />
       <span
         className={cn(
           "max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium opacity-0",
           "transition-all duration-300 ease-out",
-          "group-hover/chip:ml-1.5 group-hover/chip:max-w-[11rem] group-hover/chip:opacity-100",
-          "group-focus-visible/chip:ml-1.5 group-focus-visible/chip:max-w-[11rem] group-focus-visible/chip:opacity-100"
+          "group-hover/chip:ml-2 group-hover/chip:max-w-[10rem] group-hover/chip:opacity-100",
+          "group-focus-visible/chip:ml-2 group-focus-visible/chip:max-w-[10rem] group-focus-visible/chip:opacity-100",
+          expandGroup === "ds" &&
+            "group-hover/ds:ml-2 group-hover/ds:max-w-[10rem] group-hover/ds:opacity-100"
         )}
       >
         {label}

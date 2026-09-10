@@ -15,10 +15,10 @@ import ResultsTab from "./components/ResultsTab";
 import VideoTab from "./components/VideoTab";
 import { EagleTransitionBar } from "./components/ui/EagleLoader";
 import ExpandChip from "./components/ui/ExpandChip";
+import DatasetPicker from "./components/ui/DatasetPicker";
 import { api } from "./api";
 import {
   DATASETS,
-  DATASET_LABEL,
   type Dataset,
   type DatasetInfo,
 } from "./types";
@@ -154,25 +154,12 @@ export default function App() {
             ))}
           </nav>
           <span className="mx-0.5 h-4 w-px shrink-0 bg-horizon-navy/15" aria-hidden />
-          {DATASETS.map((d) => {
-            const info = datasetInfos.find((i) => i.id === d);
-            const ready = info ? info.yolo_ready : true;
-            return (
-              <ExpandChip
-                key={d}
-                icon={DATASET_ICON[d]}
-                label={DATASET_LABEL[d]}
-                active={dataset === d}
-                disabled={!ready}
-                onClick={() => ready && changeDataset(d)}
-                title={
-                  ready
-                    ? DATASET_LABEL[d]
-                    : `${DATASET_LABEL[d]} still training`
-                }
-              />
-            );
-          })}
+          <DatasetPicker
+            value={dataset}
+            onChange={changeDataset}
+            infos={datasetInfos}
+            icons={DATASET_ICON}
+          />
         </div>
       </header>
 
