@@ -47,29 +47,28 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
           </>
         }
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/80">
+        <p className="text-sm md:text-base font-medium uppercase tracking-[0.12em] text-paper/80">
           01 EagleEye AI · Computer vision
         </p>
-        <hr className="my-[1.5vw] border-none border-t border-paper/40" />
-        <div className="flex flex-col gap-8 max-w-5xl">
-          <h1 className="text-[clamp(3.25rem,9vw,7.5rem)] font-medium leading-[0.92] tracking-[-0.04em]">
+        <div className="flex flex-col gap-4 max-w-5xl mt-3">
+          <h1 className="text-[clamp(2.4rem,6.5vw,5.5rem)] font-medium leading-[0.94] tracking-[-0.04em]">
             Seeing the small.
             <br />
             Understanding the scene.
           </h1>
-          <p className="max-w-[42ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug text-paper/90">
+          <p className="max-w-[42ch] text-[clamp(1.1rem,1.8vw,1.5rem)] leading-snug text-paper/90">
             Multi stage detection and segmentation with YOLO, SAHI, and SAM 3.
           </p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             <ActionButton onClick={onStart} primary>
               Explore the pipelines
-              <ArrowRight size={22} aria-hidden />
+              <ArrowRight size={20} aria-hidden />
             </ActionButton>
             <ActionButton onClick={onResults}>View results</ActionButton>
             <ActionButton onClick={onVideo}>Watch live video</ActionButton>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 pt-6 border-t border-paper/30">
+        <div className="mt-auto grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-paper/30">
           {[
             ["6", "Vision pipelines"],
             ["3", "Datasets"],
@@ -77,10 +76,10 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
             ["IoU 0.50", "Evaluation"],
           ].map(([k, v]) => (
             <div key={v}>
-              <div className="text-base md:text-lg font-medium uppercase tracking-[0.1em] text-paper/60">
+              <div className="text-xs md:text-sm font-medium uppercase tracking-[0.1em] text-paper/60">
                 {v}
               </div>
-              <div className="mt-1 text-xl md:text-2xl">{k}</div>
+              <div className="mt-1 text-lg md:text-xl">{k}</div>
             </div>
           ))}
         </div>
@@ -90,61 +89,57 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
         aria-label="The research problem"
         style={{ backgroundColor: "#ffffff", color: "#001733" }}
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-slate-whisper">
+        <p className="text-sm md:text-base font-medium uppercase tracking-[0.12em] text-slate-whisper">
           02 The problem
         </p>
-        <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <div className="grid lg:grid-cols-2 gap-10 items-stretch min-h-0 flex-1">
-          <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em] self-end">
-            Small objects
-            <br />
-            break
-            <br />
-            detectors.
-          </h2>
+        <div className="mt-3 grid lg:grid-cols-2 gap-6 items-center flex-1 min-h-0">
+          <div>
+            <h2 className="text-[clamp(2.2rem,5.5vw,4.5rem)] font-medium leading-[0.94] tracking-[-0.038em]">
+              Small objects
+              <br />
+              break
+              <br />
+              detectors.
+            </h2>
+            <p className="mt-4 max-w-[46ch] text-[clamp(1.05rem,1.7vw,1.4rem)] leading-snug">
+              Conventional full frame detectors lose the pixels that matter:
+              distant cars, pedestrians, and crowded scenes. EagleEye restacks
+              detection so those objects get another look.
+            </p>
+          </div>
           <img
             src={IMG.drone}
             alt="Aerial landscape, Unsplash"
-            className="w-full h-full min-h-[42vh] object-cover rounded-[8px]"
+            className="w-full h-full min-h-0 max-h-[62vh] object-cover rounded-[8px]"
           />
         </div>
-        <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <p className="max-w-[48ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug">
-          Conventional full frame detectors lose the pixels that matter: distant
-          cars, pedestrians, and crowded scenes. EagleEye restacks detection so
-          those objects get another look.
-        </p>
       </FlowSection>
 
       <FlowSection
         aria-label="How the stack works"
         style={{ backgroundColor: "#001733", color: "#ffffff" }}
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/80">
+        <p className="text-sm md:text-base font-medium uppercase tracking-[0.12em] text-paper/80">
           03 The stack
         </p>
-        <hr className="my-[1.5vw] border-none border-t border-white/25" />
-        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
+        <h2 className="mt-3 text-[clamp(2.2rem,5.5vw,4.5rem)] font-medium leading-[0.94] tracking-[-0.038em]">
           One image.
           <br />
-          Six ways
-          <br />
-          to see it.
+          Six ways to see it.
         </h2>
-        <hr className="my-[1.5vw] border-none border-t border-white/25" />
-        <div className="grid md:grid-cols-3 gap-10">
+        <div className="mt-4 grid md:grid-cols-3 gap-5">
           <StackNote
-            icon={<Target size={36} />}
+            icon={<Target size={22} />}
             title="YOLO"
             body="Fast full frame detection. The baseline everything else is measured against."
           />
           <StackNote
-            icon={<Layers size={36} />}
+            icon={<Layers size={22} />}
             title="SAHI"
             body="Tiles the frame, infers at higher effective resolution, then merges boxes."
           />
           <StackNote
-            icon={<Scan size={36} />}
+            icon={<Scan size={22} />}
             title="SAM 3"
             body="Open vocabulary prompts and mask refinement inside each detection."
           />
@@ -152,7 +147,7 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
         <img
           src={IMG.highway}
           alt="Highway interchange, Unsplash"
-          className="mt-2 w-full flex-1 min-h-[38vh] object-cover rounded-[8px]"
+          className="mt-4 w-full flex-1 min-h-0 object-cover rounded-[8px]"
         />
       </FlowSection>
 
@@ -160,54 +155,46 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
         aria-label="How to use EagleEye"
         style={{ backgroundColor: "#f3f4f8", color: "#001733" }}
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-slate-whisper">
+        <p className="text-sm md:text-base font-medium uppercase tracking-[0.12em] text-slate-whisper">
           04 How to run it
         </p>
-        <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
-          Pick a
-          <br />
-          scene.
-          <br />
-          Run a
-          <br />
-          pipeline.
+        <h2 className="mt-3 text-[clamp(2.2rem,5.5vw,4.5rem)] font-medium leading-[0.94] tracking-[-0.038em]">
+          Pick a scene. Run a pipeline.
         </h2>
-        <hr className="my-[1.5vw] border-none border-t border-mist" />
-        <div className="grid lg:grid-cols-2 gap-10 items-start flex-1 min-h-0">
-          <div className="grid gap-8">
+        <div className="mt-4 grid lg:grid-cols-2 gap-6 items-stretch flex-1 min-h-0">
+          <div className="grid gap-4 content-start">
             <div>
-              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              <p className="mb-1 text-lg md:text-xl font-medium uppercase tracking-wide text-signal-blue">
                 01 Choose a dataset
               </p>
-              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
-                VisDrone, KITTI, or Stock (COCO). Hover the plane, car, or image
-                icons in the top bar, then click one.
+              <p className="text-base md:text-lg leading-snug text-horizon-navy">
+                Hover the plane, car, or image icons in the top bar, then click
+                VisDrone, KITTI, or Stock (COCO).
               </p>
             </div>
             <div>
-              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              <p className="mb-1 text-lg md:text-xl font-medium uppercase tracking-wide text-signal-blue">
                 02 Open Pipelines
               </p>
-              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
+              <p className="text-base md:text-lg leading-snug text-horizon-navy">
                 Six architectures, same image. Run one, or run all. Pipeline 5 is
                 the hybrid: YOLO + SAHI + SAM 3.
               </p>
             </div>
             <div>
-              <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide text-signal-blue">
+              <p className="mb-1 text-lg md:text-xl font-medium uppercase tracking-wide text-signal-blue">
                 03 Read Results
               </p>
-              <p className="text-xl md:text-2xl leading-snug text-horizon-navy">
-                Precision, recall, F1, FPS. Drag the comparison slider. Then try
-                live YOLO or YOLO + SAHI on the Video tab.
+              <p className="text-base md:text-lg leading-snug text-horizon-navy">
+                Precision, recall, F1, FPS. Drag the comparison slider, then try
+                live YOLO or YOLO + SAHI on Video.
               </p>
             </div>
           </div>
           <img
             src={IMG.urbanNight}
             alt="Urban traffic at dusk, Unsplash"
-            className="w-full h-full min-h-[48vh] object-cover rounded-[8px]"
+            className="w-full h-full min-h-0 object-cover rounded-[8px]"
           />
         </div>
       </FlowSection>
@@ -226,25 +213,20 @@ export default function HomeTab({ onStart, onResults, onVideo }: Props) {
           </>
         }
       >
-        <p className="text-xl md:text-2xl font-medium uppercase tracking-[0.12em] text-paper/70">
+        <p className="text-sm md:text-base font-medium uppercase tracking-[0.12em] text-paper/70">
           05 Start
         </p>
-        <hr className="my-[1.5vw] border-none border-t border-paper/35" />
-        <h2 className="text-[clamp(3rem,8vw,6.5rem)] font-medium leading-[0.9] tracking-[-0.038em]">
-          Measure
-          <br />
-          the
-          <br />
-          difference.
+        <h2 className="mt-3 text-[clamp(2.2rem,5.5vw,4.5rem)] font-medium leading-[0.94] tracking-[-0.038em]">
+          Measure the difference.
         </h2>
-        <p className="max-w-[44ch] text-[clamp(1.5rem,2.6vw,2.15rem)] leading-snug text-paper/90">
+        <p className="mt-4 max-w-[44ch] text-[clamp(1.1rem,1.8vw,1.5rem)] leading-snug text-paper/90">
           Accuracy is only half of the problem. SAHI recovers small objects and
           costs runtime. The workbench is where those tradeoffs become visible.
         </p>
-        <div className="flex flex-wrap gap-4">
+        <div className="mt-6 flex flex-wrap gap-3">
           <ActionButton onClick={onStart} primary>
             Open pipelines
-            <ArrowRight size={22} aria-hidden />
+            <ArrowRight size={20} aria-hidden />
           </ActionButton>
           <ActionButton onClick={onResults}>Open results</ActionButton>
           <ActionButton onClick={onVideo}>Open video</ActionButton>
@@ -268,7 +250,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "group inline-flex items-center justify-center gap-3 rounded-[8px] px-8 py-5 text-lg md:text-xl font-medium transition-transform duration-300 hover:-translate-y-0.5",
+        "group inline-flex items-center justify-center gap-3 rounded-[8px] px-6 py-3.5 text-base md:text-lg font-medium transition-transform duration-300 hover:-translate-y-0.5",
         primary
           ? "bg-signal-blue text-paper"
           : "border border-mist bg-paper text-horizon-navy"
@@ -290,11 +272,11 @@ function StackNote({
 }) {
   return (
     <div>
-      <div className="text-paper mb-3">{icon}</div>
-      <p className="mb-3 text-2xl md:text-3xl font-medium uppercase tracking-wide">
+      <div className="text-paper mb-1.5">{icon}</div>
+      <p className="mb-1 text-lg md:text-xl font-medium uppercase tracking-wide">
         {title}
       </p>
-      <p className="text-xl md:text-2xl leading-snug text-paper/80">{body}</p>
+      <p className="text-sm md:text-base leading-snug text-paper/80">{body}</p>
     </div>
   );
 }

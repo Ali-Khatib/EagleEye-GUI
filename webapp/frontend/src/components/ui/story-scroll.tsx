@@ -27,13 +27,13 @@ export const FlowSection: React.FC<FlowSectionProps> = ({
   <section
     data-flow-section
     aria-label={ariaLabel}
-    className={cx("relative min-h-screen w-full overflow-hidden", className)}
+    className={cx("relative h-screen w-full overflow-hidden", className)}
   >
     {background}
     <div
       data-flow-inner
       className={cx(
-        "flow-art-container relative z-10 flex min-h-screen w-full flex-col justify-between gap-6 bg-inherit px-[4vw] pt-[clamp(4.5rem,8vw,5.5rem)] pb-[4vw]",
+        "flow-art-container relative z-10 flex h-screen w-full flex-col justify-start gap-3 bg-inherit px-[4vw] pt-16 pb-4",
         "will-change-transform"
       )}
       style={{ transformOrigin: "bottom left", ...style }}
@@ -104,8 +104,8 @@ const FlowArt: React.FC<FlowArtProps> = ({
           triggers.push(
             ScrollTrigger.create({
               trigger: section,
-              start: "top top",
-              end: "+=200%",
+              start: "bottom bottom",
+              end: "bottom top",
               pin: true,
               pinSpacing: false,
               anticipatePin: 1,
@@ -124,26 +124,13 @@ const FlowArt: React.FC<FlowArtProps> = ({
     { scope: containerRef, dependencies: [childCount(children), reducedMotion] }
   );
 
-  const items = React.Children.toArray(children);
-
   return (
     <div
       ref={containerRef}
       aria-label={ariaLabel}
       className={cx("w-full overflow-x-hidden", className)}
     >
-      {items.map((child, i) => (
-        <React.Fragment key={i}>
-          {child}
-          {i < items.length - 1 && (
-            <div
-              data-flow-gap
-              aria-hidden
-              className="pointer-events-none h-[100svh] w-full bg-paper"
-            />
-          )}
-        </React.Fragment>
-      ))}
+      {children}
     </div>
   );
 };
